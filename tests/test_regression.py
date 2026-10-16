@@ -156,6 +156,34 @@ class CuTpp2mImfps(unittest.TestCase):
                              (b.density_g_cm3, b.molar_mass_g_mol, b.atoms_per_formula))
 
 
+class AvantageDensitiesSiTi(unittest.TestCase):
+    """Densities / band gaps from Thermo Avantage Densities.txt; IMFPs are computed with TPP-2M (not published)."""
+    # (preset, density, band gap eV, Nv per formula unit, molar mass, KE eV for Si 2p / Ti 2p3/2 with Al Ka)
+    CASES = [
+        ("sub", "Si (metal/elemental)", 2.33, 1.12, 4, 28.09, 1486.6 - 99.3),
+        ("sub", "Ti (metal)", 4.54, 0.0, 4, 47.867, 1486.6 - 453.9),
+        ("ov", "SiO2", 2.196, 8.9, 16, 60.08, 1486.6 - 99.3),
+        ("ov", "Si3N4", 3.44, 4.65, 32, 140.28, 1486.6 - 99.3),
+        ("ov", "TiO2", 4.26, 3.05, 16, 79.866, 1486.6 - 453.9),
+    ]
+
+    def test_presets_use_avantage_densities_and_tpp2m_imfps(self):
+        for kind, key, rho, eg, nv, m, ke in self.CASES:
+            c = (A.SUBSTRATES if kind == "sub" else A.OVERLAYERS)[key]
+            self.assertEqual(c.density_g_cm3, rho, key)
+            self.assertAlmostEqual(c.molar_mass_g_mol, m, places=3, msg=key)
+            self.assertAlmostEqual(c.imfp_nm, A.tpp2m_imfp_nm(ke, rho, m, nv, eg), delta=0.005, msg=key)
+
+    def test_density_ratios(self):
+        def ratio(sub, ov):
+            s, o = A.SUBSTRATES[sub], A.OVERLAYERS[ov]
+            return (A.volume_density(s.density_g_cm3, s.molar_mass_g_mol, 1)
+                    / A.volume_density(o.density_g_cm3, o.molar_mass_g_mol, o.atoms_per_formula))
+        self.assertAlmostEqual(ratio("Si (metal/elemental)", "SiO2"), 2.27, delta=0.01)
+        self.assertAlmostEqual(ratio("Si (metal/elemental)", "Si3N4"), 1.13, delta=0.01)
+        self.assertAlmostEqual(ratio("Ti (metal)", "TiO2"), 1.78, delta=0.01)
+
+
 class EquationProperties(unittest.TestCase):
     def test_mixed_layer_reduces_to_single_when_components_identical(self):
         one = _thickness(90, 1.5, 2.6, 35, 1.0, 2.8, 65)["d_nm"]

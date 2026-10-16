@@ -104,8 +104,15 @@ SUBSTRATES = {
     ),
     "Si (metal/elemental)": Compound(
         "Si (elemental)", density_g_cm3=2.33, molar_mass_g_mol=28.09,
-        atoms_per_formula=1, core_level="Si 2p3/2", be_ev=99.3, imfp_nm=2.87,
-        note="Al Ka source, KE ~1387 eV. IMFP is a TPP-2M-type estimate - verify.",
+        atoms_per_formula=1, core_level="Si 2p3/2", be_ev=99.3, imfp_nm=3.09,
+        note="Density and band gap (1.12 eV) from Thermo Avantage Densities.txt. IMFP 3.09 nm COMPUTED with TPP-2M "
+             "(Nv = 4) at KE ~1387 eV (Al Ka); not a published value.",
+    ),
+    "Ti (metal)": Compound(
+        "Ti (metal)", density_g_cm3=4.54, molar_mass_g_mol=47.867,
+        atoms_per_formula=1, core_level="Ti 2p3/2", be_ev=453.9, imfp_nm=2.19,
+        note="Density from Thermo Avantage Densities.txt. IMFP 2.19 nm COMPUTED with TPP-2M (Nv = 4) at KE ~1033 eV "
+             "(Al Ka); not a published value. BE is a typical literature value, not from the file.",
     ),
     "Custom / manual entry": Compound(
         "Custom", density_g_cm3=1.0, molar_mass_g_mol=1.0,
@@ -171,14 +178,23 @@ OVERLAYERS = {
         note="Mg Ka source (KE ~1180 eV): IMFP 2.4 nm (Strohmeier 1990), Nm/Nox = 1.5. Pair with 'Al (metal, Mg Ka)'.",
     ),
     "SiO2": Compound(
-        "SiO2", density_g_cm3=2.20, molar_mass_g_mol=60.08,
-        atoms_per_formula=1, core_level="Si 2p3/2", be_ev=103.4, imfp_nm=3.68,
-        note="Amorphous thermal-oxide density (2.2); quartz is 2.65 - edit if relevant.",
+        "SiO2", density_g_cm3=2.196, molar_mass_g_mol=60.08,
+        atoms_per_formula=1, core_level="Si 2p3/2", be_ev=103.4, imfp_nm=3.89,
+        note="Density 2.196 g/cm3 and band gap 8.9 eV from Thermo Avantage Densities.txt (amorphous; quartz is 2.65). "
+             "IMFP 3.89 nm COMPUTED with TPP-2M (Nv = 16) at KE ~1387 eV (Al Ka); not a published value.",
     ),
     "Si3N4": Compound(
-        "Si3N4", density_g_cm3=3.10, molar_mass_g_mol=140.28,
+        "Si3N4", density_g_cm3=3.44, molar_mass_g_mol=140.28,
         atoms_per_formula=3, core_level="Si 2p3/2", be_ev=101.8, imfp_nm=3.00,
-        note="Amorphous LPCVD-type silicon nitride density (~2.9-3.1); edit for your film.",
+        note="Density 3.44 g/cm3 and band gap 4.65 eV from Thermo Avantage Densities.txt; thin amorphous/LPCVD films "
+             "are often lower (~2.9-3.1), which raises Nm/Nox. IMFP 3.00 nm COMPUTED with TPP-2M (Nv = 32) at KE ~1387 eV "
+             "(Al Ka); not a published value.",
+    ),
+    "TiO2": Compound(
+        "TiO2", density_g_cm3=4.26, molar_mass_g_mol=79.866,
+        atoms_per_formula=1, core_level="Ti 2p3/2", be_ev=458.8, imfp_nm=2.17,
+        note="Density 4.26 g/cm3 and band gap 3.05 eV from Thermo Avantage Densities.txt. IMFP 2.17 nm COMPUTED with "
+             "TPP-2M (Nv = 16) at KE ~1033 eV (Al Ka); not a published value. BE is a typical literature value, not from the file.",
     ),
     "SiON (oxynitride, approx.)": Compound(
         "SiON", density_g_cm3=2.50, molar_mass_g_mol=87.09,
@@ -612,9 +628,9 @@ tests/test_regression.py:
   - W / WO3: Carlson & McGuire, J. Electron Spectrosc. 1972/73, 1, 161
     (19.3 and 6.8 g/cm3, IMFP 1.28 and 2.63 nm, 45 deg take-off).
 
-For the other systems (Si/SiO2/Si3N4/SiON), densities, molar masses, typical
-binding energies and IMFP values supplied as defaults are representative
-literature / TPP-2M-style estimates. All presets are
+Si, SiO2, Si3N4, Ti and TiO2 use densities and band gaps from the Thermo
+Avantage Densities.txt, with IMFPs COMPUTED here by TPP-2M (not published
+values). SiON is a rough placeholder. All presets are
 ALL EDITABLE. In particular:
   - IMFP is the most sensitive/uncertain input and depends on the exact
     kinetic energy (i.e. your X-ray source) and the true film density.

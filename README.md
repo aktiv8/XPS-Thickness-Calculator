@@ -55,7 +55,12 @@ paper, so use the `(LMM)` presets with Cu LMM areas. Separate `(2p3/2)` presets
 (IMFP 1.01 / 1.23 / 1.22 / 1.51 nm for Cu / Cu₂O / CuO / Cu(OH)₂ at KE ≈ 554 eV) are
 **computed** with TPP-2M (`tpp2m_imfp_nm()` in `app.py`), not published values; the same
 code reproduces Biesinger's oxide IMFPs at 918 eV to 0.2 %. Don't mix the two sets —
-thickness scales almost linearly with the IMFPs. Si presets are still approximate defaults.
+thickness scales almost linearly with the IMFPs.
+
+Si, SiO₂, Si₃N₄, Ti and TiO₂ take density and band gap from the Thermo Avantage
+`Densities.txt` (2.33/2.196/3.44/4.54/4.26 g/cm³), with IMFPs **computed** by TPP-2M
+(3.09/3.89/3.00/2.19/2.17 nm at Al Kα). Note the 3.44 g/cm³ Si₃N₄ density is high for
+thin amorphous films. SiON is still a rough placeholder.
 
 ## Tests
 
