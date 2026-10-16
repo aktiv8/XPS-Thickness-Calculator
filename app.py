@@ -41,7 +41,8 @@ EDITABLE - you should verify/replace them (e.g. via NIST SRD 82, or your own
 reference measurements) for your specific instrument, X-ray source and
 material phase (amorphous vs. crystalline density strongly affects results).
 
-No third-party dependencies - pure standard library (tkinter).
+The thickness calculator needs no third-party packages (standard library + tkinter only). The optional
+"Simulated spectrum" tab (see spectrum_sim.py) needs numpy and matplotlib; without them it shows an install hint.
 """
 
 import csv
@@ -51,6 +52,20 @@ import tkinter as tk
 from dataclasses import dataclass, field
 from typing import Optional
 from tkinter import ttk, messagebox, filedialog
+import os
+
+# Optional: the simulated-spectrum tab needs numpy + matplotlib. The thickness calculator itself does not.
+try:
+    import numpy as np  # noqa: F401  (used by spectrum_sim and the plotting code below)
+    import matplotlib
+    matplotlib.use("TkAgg")
+    from matplotlib.figure import Figure
+    from matplotlib.patches import Rectangle
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+    import spectrum_sim as sim
+    HAVE_PLOT = True
+except Exception:
+    HAVE_PLOT = False
 
 
 # ---------------------------------------------------------------------------
@@ -558,6 +573,14 @@ N_OVERLAYER_ROWS = 4
 FIELD_WIDTH = 9
 
 
+def _to_float(text):
+    """Float from an entry's text, or None if blank/invalid."""
+    try:
+        return float(str(text).strip())
+    except ValueError:
+        return None
+
+
 class CompoundRow:
     """One editable row (substrate or overlayer) bound to a Compound preset dropdown."""
 
@@ -652,14 +675,19 @@ class App(tk.Tk):
         nb.pack(fill="both", expand=True, padx=8, pady=8)
 
         self.calc_tab = ttk.Frame(nb)
+        self.spec_tab = ttk.Frame(nb)
         self.help_tab = ttk.Frame(nb)
         nb.add(self.calc_tab, text="Calculator")
+        nb.add(self.spec_tab, text="Simulated spectrum (estimate)")
         nb.add(self.help_tab, text="Method / References")
 
-        self._build_calc_tab()
-        self._build_help_tab()
-
         self.history = []  # list of dict rows for CSV export
+        self.last_calc = None   # inputs + result of the last successful calculation (feeds the spectrum tab)
+        self.sim_data = None    # (x, y, name) of a user-loaded spectrum
+
+        self._build_calc_tab()
+        self._build_spectrum_tab()
+        self._build_help_tab()
 
     # ------------------------------------------------------------------
     def _build_calc_tab(self):
@@ -730,6 +758,7 @@ class App(tk.Tk):
             sub_label, N_sub, lam_sub, rsf_sub, I_sub = self.substrate_row.read()
 
             components = []
+            comp_meta = []   # (binding energy text, core level text) per component, for the spectrum tab
             for row in self.overlayer_rows:
                 if not row.active_var.get() or row.choice_var.get() == "None":
                     continue
@@ -737,6 +766,7 @@ class App(tk.Tk):
                 if area <= 0:
                     continue
                 components.append(OverlayerInput(label, N, lam, rsf, area))
+                comp_meta.append((row.be_var.get(), row.core_var.get()))
 
             if not components:
                 raise ValueError("Tick at least one overlayer row as active and enter its peak area.")
@@ -785,6 +815,15 @@ class App(tk.Tk):
             "within_validity": res["within_validity"],
         })
 
+        self.last_calc = {
+            "theta": theta, "res": res,
+            "sub": {"label": sub_label, "N": N_sub, "lam": lam_sub, "rsf": rsf_sub,
+                    "be": _to_float(self.substrate_row.be_var.get()), "core": self.substrate_row.core_var.get()},
+            "comps": [{"label": c.label, "area": c.area, "be": _to_float(be), "core": core}
+                      for c, (be, core) in zip(components, comp_meta)],
+        }
+        self._refresh_spectrum(reset=True)
+
     def _export_csv(self):
         if not self.history:
             messagebox.showinfo("No data", "Run at least one calculation first.")
@@ -799,6 +838,220 @@ class App(tk.Tk):
             writer.writeheader()
             writer.writerows(self.history)
         messagebox.showinfo("Exported", f"Saved {len(self.history)} result(s) to:\n{path}")
+
+    # ------------------------------------------------------------------
+    # Simulated spectrum tab (needs numpy + matplotlib)
+    # ------------------------------------------------------------------
+    OXIDE_COLOURS = ["#d62728", "#ff7f0e", "#2ca02c", "#9467bd"]
+    METAL_COLOUR = "#1f77b4"
+
+    def _build_spectrum_tab(self):
+        tab = self.spec_tab
+        if not HAVE_PLOT:
+            ttk.Label(tab, justify="left", padding=20,
+                      text="The simulated-spectrum tab needs numpy and matplotlib:\n\n"
+                           "    pip install numpy matplotlib\n\n"
+                           "then restart the app. The thickness calculator works without them.").pack(anchor="nw")
+            return
+
+        self.sim_d_var = tk.StringVar()
+        self.sim_shift_var = tk.StringVar(value="0")
+        self.sim_fwhm_m_var = tk.StringVar()
+        self.sim_fwhm_c_var = tk.StringVar()
+        self.sim_status = tk.StringVar(value="Run a calculation on the Calculator tab to see an estimated spectrum here.")
+        self._sim_busy = False
+
+        tk.Label(tab, text=sim.DISCLAIMER, fg="#b00020", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=8, pady=(6, 0))
+
+        ctl = ttk.Frame(tab)
+        ctl.pack(fill="x", padx=8, pady=(4, 0))
+        ttk.Label(ctl, text="Thickness (nm):").pack(side="left")
+        d_entry = ttk.Entry(ctl, textvariable=self.sim_d_var, width=8)
+        d_entry.pack(side="left", padx=(4, 6))
+        self.sim_scale = ttk.Scale(ctl, from_=0.0, to=10.0, length=240, command=self._on_slider)
+        self.sim_scale.pack(side="left")
+        ttk.Button(ctl, text="Reset to calculated", command=lambda: self._refresh_spectrum(reset=True)).pack(side="left", padx=8)
+
+        ctl2 = ttk.Frame(tab)
+        ctl2.pack(fill="x", padx=8, pady=(4, 0))
+        entries = [d_entry]
+        for text, var in (("BE shift (eV):", self.sim_shift_var), ("FWHM metal (eV):", self.sim_fwhm_m_var),
+                          ("FWHM oxide (eV):", self.sim_fwhm_c_var)):
+            ttk.Label(ctl2, text=text).pack(side="left", padx=(0, 2))
+            e = ttk.Entry(ctl2, textvariable=var, width=7)
+            e.pack(side="left", padx=(0, 10))
+            entries.append(e)
+        ttk.Button(ctl2, text="Load my spectrum...", command=self._load_user_spectrum).pack(side="left")
+        ttk.Button(ctl2, text="Clear data", command=self._clear_user_spectrum).pack(side="left", padx=6)
+        for widget in entries:
+            widget.bind("<Return>", lambda e: self._draw_spectrum())
+            widget.bind("<FocusOut>", lambda e: self._draw_spectrum())
+
+        ttk.Label(tab, textvariable=self.sim_status, wraplength=1100, justify="left").pack(anchor="w", padx=8, pady=(4, 0))
+
+        self.fig = Figure(figsize=(9.5, 5.2), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=tab)
+        toolbar = NavigationToolbar2Tk(self.canvas, tab, pack_toolbar=False)
+        toolbar.pack(side="bottom", fill="x")
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=4, pady=4)
+        self._draw_placeholder("Run a calculation on the Calculator tab.")
+
+    def _draw_placeholder(self, message):
+        self.fig.clear()
+        ax = self.fig.add_subplot(111)
+        ax.axis("off")
+        ax.text(0.5, 0.5, message, ha="center", va="center", wrap=True, fontsize=11, transform=ax.transAxes)
+        self.canvas.draw_idle()
+
+    def _on_slider(self, value):
+        if self._sim_busy:
+            return
+        self.sim_d_var.set(f"{float(value):.3f}")
+        self._draw_spectrum()
+
+    def _simulation_problem(self):
+        """Return (model, None) if the last calculation can be drawn, else (None, explanation)."""
+        lc = self.last_calc
+        model = sim.model_for(lc["sub"]["core"])
+        if model is None:
+            return None, ("No spectrum can be simulated for '%s'.\nOnly core-level presets with a binding energy are "
+                          "supported; Auger (LMM) presets and custom rows without a recognised core level are not."
+                          % (lc["sub"]["core"] or "blank core level"))
+        for item in [lc["sub"]] + lc["comps"]:
+            if not item["be"]:
+                return None, f"'{item['label']}' has no binding energy - fill in the BE column to simulate."
+        for comp in lc["comps"]:
+            if sim.model_for(comp["core"]) is not model:
+                return None, (f"Substrate ({lc['sub']['core']}) and overlayer '{comp['label']}' ({comp['core']}) use "
+                              "different core levels, so they can't be drawn in one window.")
+        return model, None
+
+    def _refresh_spectrum(self, reset=False):
+        if not HAVE_PLOT or self.last_calc is None:
+            return
+        model, problem = self._simulation_problem()
+        if problem:
+            self.sim_status.set(problem.replace("\n", " "))
+            self._draw_placeholder(problem)
+            return
+        if reset:
+            res = self.last_calc["res"]
+            d_max = max(3.0 * res["lam_ov_avg"], 1.5 * res["d_nm"], 1.0)
+            self._sim_busy = True
+            self.sim_scale.configure(to=d_max)
+            self.sim_scale.set(res["d_nm"])
+            self._sim_busy = False
+            self.sim_d_var.set(f"{res['d_nm']:.3f}")
+            self.sim_fwhm_m_var.set(f"{model.fwhm_metal:g}")
+            self.sim_fwhm_c_var.set(f"{model.fwhm_compound:g}")
+        self._draw_spectrum()
+
+    def _load_user_spectrum(self):
+        path = filedialog.askopenfilename(title="Load a 2-column spectrum (binding energy, intensity)",
+                                          filetypes=[("Text / CSV", "*.txt *.csv *.dat *.asc"), ("All files", "*.*")])
+        if not path:
+            return
+        try:
+            x, y = sim.load_spectrum_file(path)
+        except (OSError, ValueError) as e:
+            messagebox.showerror("Could not load spectrum", str(e))
+            return
+        self.sim_data = (x, y, os.path.basename(path))
+        self._draw_spectrum()
+
+    def _clear_user_spectrum(self):
+        self.sim_data = None
+        self._draw_spectrum()
+
+    def _draw_spectrum(self):
+        if not HAVE_PLOT or self.last_calc is None:
+            return
+        model, problem = self._simulation_problem()
+        if problem:
+            self._draw_placeholder(problem)
+            return
+        lc = self.last_calc
+        res = lc["res"]
+        try:
+            d_nm = float(self.sim_d_var.get())
+            shift = float(self.sim_shift_var.get() or 0.0)
+            fwhm_m = float(self.sim_fwhm_m_var.get()) if self.sim_fwhm_m_var.get().strip() else None
+            fwhm_c = float(self.sim_fwhm_c_var.get()) if self.sim_fwhm_c_var.get().strip() else None
+            if d_nm < 0 or (fwhm_m is not None and fwhm_m <= 0) or (fwhm_c is not None and fwhm_c <= 0):
+                raise ValueError
+        except ValueError:
+            self.sim_status.set("Check the controls: thickness must be >= 0, FWHM > 0, BE shift a number.")
+            return
+
+        areas = [c["area"] for c in lc["comps"]]
+        sub_frac, ov_fracs, _ = sim.oxide_area_fractions(
+            d_nm, lc["theta"], lc["sub"]["N"], lc["sub"]["lam"], lc["sub"]["rsf"],
+            res["N_ov_avg"], res["lam_ov_avg"], res["rsf_ov_avg"], areas)
+        comps = [sim.SimComponent(lc["sub"]["label"], lc["sub"]["be"], sub_frac, "metal")]
+        comps += [sim.SimComponent(c["label"], c["be"], f, "compound") for c, f in zip(lc["comps"], ov_fracs)]
+        simulation = sim.simulate(model, comps, fwhm_metal=fwhm_m, fwhm_compound=fwhm_c, be_shift=shift)
+
+        what_if = abs(d_nm - res["d_nm"]) > 5e-4
+        status = ((f"WHAT-IF thickness {d_nm:.3f} nm (calculated: {res['d_nm']:.3f} nm). " if what_if
+                   else f"Calculated thickness {d_nm:.3f} nm. ")
+                  + "Areas: " + ", ".join(f"{c.label} {100 * c.fraction:.0f}%" for c in comps)
+                  + f". Take-off angle {lc['theta']:g} deg. Peak shapes are typical defaults, not fitted to any data.")
+
+        fig = self.fig
+        fig.clear()
+        gs = fig.add_gridspec(1, 2, width_ratios=[4.2, 1.0], wspace=0.30, left=0.07, right=0.97, top=0.86, bottom=0.13)
+        ax = fig.add_subplot(gs[0])
+        axd = fig.add_subplot(gs[1])
+        fig.suptitle(sim.DISCLAIMER, color="#b00020", fontsize=12, fontweight="bold", y=0.975)
+
+        x, bg = simulation.be, simulation.background
+        for i, (label, kind, frac, y) in enumerate(simulation.components):
+            col = self.METAL_COLOUR if i == 0 else self.OXIDE_COLOURS[(i - 1) % len(self.OXIDE_COLOURS)]
+            ax.fill_between(x, bg, bg + y, color=col, alpha=0.35, linewidth=0)
+            ax.plot(x, bg + y, color=col, lw=1.0, label=f"{label} ({100 * frac:.0f}%)")
+        ax.plot(x, bg, "--", color="0.45", lw=1.0, label="Shirley-type background")
+        ax.plot(x, simulation.total, color="k", lw=1.6, label="Simulated total")
+
+        if self.sim_data is not None:
+            dx, dy, name = self.sim_data
+            m = (dx >= x.min()) & (dx <= x.max())
+            if m.sum() >= 3:
+                lo, hi = float(dy[m].min()), float(dy[m].max())
+                if hi > lo:
+                    span = simulation.total.max() - simulation.total.min()
+                    scaled = (dy[m] - lo) / (hi - lo) * span + simulation.total.min()
+                    ax.plot(dx[m], scaled, ".", ms=3.5, color="#555555", label=f"{name} (scaled to simulation)")
+            else:
+                status += f" Loaded data '{name}' does not overlap this BE window."
+        self.sim_status.set(status)
+
+        ax.invert_xaxis()
+        ax.set_xlabel("Binding energy (eV)")
+        ax.set_ylabel("Relative intensity (a.u.)")
+        ax.set_yticks([])
+        ax.set_title(f"{model.shell} region, peak areas normalised to 100%", fontsize=10)
+        ax.text(0.5, 0.5, "ESTIMATE", transform=ax.transAxes, fontsize=64, color="red", alpha=0.07,
+                ha="center", va="center", rotation=25, fontweight="bold")
+        ax.legend(loc="upper left", fontsize=8, frameon=False)
+
+        # --- to-scale layer diagram -------------------------------------------------
+        sub_h = 3.0 * lc["sub"]["lam"]
+        top = max(0.3 * (d_nm + sub_h), 0.5) * (1.0 + 0.5 * (len(lc["comps"]) - 1))   # room for one label line per component
+        axd.add_patch(Rectangle((0, -sub_h), 1, sub_h, facecolor=self.METAL_COLOUR, alpha=0.45, edgecolor="k"))
+        axd.add_patch(Rectangle((0, 0), 1, max(d_nm, 1e-9), facecolor=self.OXIDE_COLOURS[0], alpha=0.6, edgecolor="k"))
+        axd.set_xlim(0, 1)
+        axd.set_ylim(-sub_h, d_nm + top)
+        axd.set_xticks([])
+        axd.set_ylabel("height above interface (nm)")
+        axd.text(0.5, -sub_h / 2, f"{lc['sub']['label']}\n(shown to 3\u03bb = {sub_h:.1f} nm)",
+                 ha="center", va="center", fontsize=8)
+        names = "\n".join(c["label"] for c in lc["comps"])      # one per line: the diagram axes are narrow
+        axd.text(0.5, d_nm + top / 2, f"{names}\nd = {d_nm:.2f} nm" + (" (what-if)" if what_if else ""),
+                 ha="center", va="center", fontsize=7.5, fontweight="bold")
+        axd.set_title("Layer (to scale)", fontsize=10)
+        for side in ("top", "right"):
+            axd.spines[side].set_visible(False)
+        self.canvas.draw_idle()
 
     # ------------------------------------------------------------------
     def _build_help_tab(self):
@@ -914,6 +1167,22 @@ ALL EDITABLE. In particular:
     sapphire; thermal SiO2 vs. quartz) - adjust accordingly.
   - Binding energy fields are for peak identification/reference only and
     do not enter the thickness calculation directly.
+
+Simulated spectrum tab (estimate)
+----------------------------------
+After a calculation, the "Simulated spectrum" tab draws what that thickness
+would look like for the substrate and oxide core-level peaks (spin-orbit
+doublets, Shirley-type background) next to a to-scale layer diagram, so you
+can compare it by eye with your own data. Use "Load my spectrum..." (2-column
+text/CSV: binding energy, intensity) to overlay it; it is scaled to the height
+of the simulation. Use the thickness box/slider for what-if values, the BE
+shift for charge correction, and the FWHM boxes to match your resolution.
+
+It is an ESTIMATE, not a fit: splitting, branching ratio and FWHM are typical
+literature defaults; shake-up satellites (CuO, Cu(OH)2), asymmetric metal tails,
+plasmon/loss features and Auger lines are not modelled; intensities are
+relative (areas normalised to 100%). It needs numpy and matplotlib
+(pip install numpy matplotlib); the calculator itself does not.
 
 Validity / limitations
 ------------------------

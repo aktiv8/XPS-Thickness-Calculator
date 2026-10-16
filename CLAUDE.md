@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Single-file Tkinter app (`app.py`, Python standard library only, no dependencies) that estimates oxide/hydroxide/nitride overlayer thickness from XPS peak areas using the Strohmeier equation (B. R. Strohmeier, *Surf. Interface Anal.* 1990, 15, 51; HarwellXPS Tech Note #1: https://subsite.harwellxps.uk/wp-content/uploads/2018/02/HarwellXPS_TechNote_01.pdf). `README.md` covers user-facing usage.
+Tkinter app (`app.py`; the thickness calculator is Python standard library only) that estimates oxide/hydroxide/nitride overlayer thickness from XPS peak areas using the Strohmeier equation (B. R. Strohmeier, *Surf. Interface Anal.* 1990, 15, 51; HarwellXPS Tech Note #1: https://subsite.harwellxps.uk/wp-content/uploads/2018/02/HarwellXPS_TechNote_01.pdf). `README.md` covers user-facing usage.
 
 ## Commands
 
 ```bash
 python app.py                                                  # launch the Tk GUI (blocks until closed)
 python -c "import py_compile; py_compile.compile('app.py', doraise=True)"   # syntax check without opening a window
-python -m unittest discover -s tests -v                        # run all tests (stdlib only, no display)
+python -m unittest discover -s tests -v                        # run all tests (no display; numpy tests skip if numpy is missing)
+pip install numpy matplotlib                                   # optional: enables the "Simulated spectrum" tab
 python -m unittest tests.test_regression.BiesingerAlSpreadsheet   # a single test class
 ```
 
@@ -32,7 +33,16 @@ There is no linter or formatter. The calculation core is `strohmeier_thickness()
 - Extra pairs (Mg/MgO, Ge/GeO₂, Zn/ZnO, Zr/ZrO₂, Hf/HfO₂, Sn/SnO₂, SiC→SiO₂, GaAs & GaP→Ga₂O₃, CdTe→TeO₂, plus InP/PbS below) were added at the user's request. Densities and gaps use the Avantage file where it has them (Mg, Ge, Sn, SiC, GaAs, ZnO, ZrO₂, HfO₂); the rest (Zn, Zr, Hf metals; MgO, GeO₂, SnO₂, Ga₂O₃, TeO₂; GaP, CdTe) are **my handbook values, not from the user's files**, and the oxide choices are judgement calls (GeO₂ 3.64 amorphous, TeO₂ 6.04 paratellurite). Valence-electron counts (`TPP2M_INPUTS`) count s/p (+ unfilled d) electrons with filled d shells as core (Cu stays 11 to match Biesinger). Sanity check: Nm/Nox equals the Pilling–Bedworth ratio for 1:1 oxides and matches published values.
 - InP (In 3d5/2 → In₂O₃) and PbS (S 2p → PbSO₄) were added once the user supplied their densities (4.81, 7.60 g/cm³). In₂O₃ and PbSO₄ densities are handbook values and their band gaps (2.9, 4.5 eV) are rough estimates (`ROUGH` in `BAND_GAPS_EV`). The In 3d5/2 shift (~0.3–0.5 eV) is barely resolvable and InPO₄ (the other native-oxide component) is not modelled; PbS→PbSO₄ is clean because the S 2p sulfate shift is ~7.5 eV (Pb 4f cannot separate PbO well, so PbO is not modelled).
 - Deliberately NOT added: ZnS (no clean oxide route), diamond/graphite (no meaningful oxide overlayer), As₂O₃ for GaAs (no band gap/density from the user), CdO for CdTe (Cd 3d can't resolve it).
-- SiON is a rough placeholder, not sourced; the GUI makes all presets editable. Binding energies are informational only and don't enter the calculation.
+- SiON is a rough placeholder, not sourced; the GUI makes all presets editable. Binding energies don't enter the thickness calculation, but they position the peaks in the simulated spectrum.
+
+## Simulated spectrum tab (`spectrum_sim.py`)
+
+Optional (numpy + matplotlib; `app.py` guards the import and sets `HAVE_PLOT`, and without them the tab just shows an install hint). `spectrum_sim.py` is pure numpy with no Tk, so it is unit-tested directly (`tests/test_spectrum_sim.py`); `app.py` only holds the Tk/matplotlib glue (`_build_spectrum_tab`, `_refresh_spectrum`, `_draw_spectrum`, fed by `self.last_calc` which `_on_calculate` fills).
+
+- It is an **estimate, not a fit**, and every figure says so (`DISCLAIMER`). `oxide_area_fractions()` is the forward form of the Strohmeier equation and reuses the `N_ov_avg` / `lam_ov_avg` / `rsf_ov_avg` that `strohmeier_thickness()` returns, so simulating at the calculated d reproduces the entered area ratio exactly (tested). Intensities are relative (areas normalised to 100%).
+- `CORE_LEVEL_MODEL` (spin-orbit splitting, branching ratio, default FWHM, Lorentzian mix) holds **typical literature values from general knowledge, not from the user's files**; FWHM is editable in the tab. The preset BE is taken as the lower-BE j-component (2p3/2, 3d5/2, 4f7/2) with the partner at +splitting. `model_for()` returns None for Auger presets (`Cu LMM`, `Zn LMM`), which are deliberately not simulated; a test enforces that every preset with a BE has a model and every Auger preset has none.
+- Not modelled: shake-up satellites (CuO, Cu(OH)₂), asymmetric metal tails, plasmon/loss features, Auger lines. Background is a self-consistent Shirley step (15% of peak height). The default window clips a little Lorentzian tail (≤ ~3% of area), which the tests allow for.
+- A user spectrum is loaded as 2-column text/CSV (BE, intensity; headers skipped) and min–max scaled to the simulation height, so it is a shape comparison, not a quantitative overlay.
 
 ## Git
 

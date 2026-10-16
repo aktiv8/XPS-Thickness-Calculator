@@ -8,10 +8,12 @@ https://subsite.harwellxps.uk/wp-content/uploads/2018/02/HarwellXPS_TechNote_01.
 
 ## Running it
 
-No third-party packages required (uses only the Python standard library /
-Tkinter, which ships with standard Windows Python installs):
+The thickness calculator needs no third-party packages (only the Python
+standard library / Tkinter, which ships with standard Windows Python installs).
+The optional **Simulated spectrum** tab needs numpy and matplotlib:
 
 ```bash
+pip install numpy matplotlib   # optional
 python app.py
 ```
 
@@ -34,6 +36,16 @@ python app.py
 - Flags whether the result is within the method's validity limit
   (~3x the overlayer IMFP).
 - Results can be exported to CSV via **Export history to CSV...**.
+- **Simulated spectrum (estimate)** tab: after a calculation it draws what that
+  thickness would look like for the substrate and oxide core-level peaks
+  (spin-orbit doublets, Shirley-type background) next to a to-scale layer
+  diagram, clearly labelled as an estimate. Use **Load my spectrum...**
+  (2-column text/CSV of binding energy, intensity) to overlay your own data,
+  the thickness box/slider for what-if values, the BE shift for charge
+  correction and the FWHM boxes to match your resolution. The figure can be
+  saved as PNG from its toolbar. Peak splitting/FWHM are typical defaults;
+  shake-up satellites, asymmetric metal tails and Auger lines (e.g. the Cu LMM
+  presets) are not modelled.
 
 See the **Method / References** tab inside the app for the full equations,
 derivation notes, and important caveats about the reference density/IMFP
@@ -78,11 +90,13 @@ additions (InP 1.27, GaP 2.25, CdTe 1.44, PbS 0.37 eV). Existing entries are nev
 python -m unittest discover -s tests -v
 ```
 
-Stdlib only; no display needed. `tests/test_regression.py` checks published numbers from
+No display needed; the numpy-based spectrum tests skip themselves if numpy is missing. `tests/test_regression.py` checks published numbers from
 the three papers above and Biesinger's Al spreadsheet (65/35 → 35.8 Å,
 23/77 → 9.7 Å, 85/15 → 61.2 Å), plus a few properties of the equation.
 
 ## Files
 
-- `app.py` — the application (single file).
-- `tests/test_regression.py` — regression tests.
+- `app.py` — the application (calculator, presets, GUI).
+- `spectrum_sim.py` — simulated-spectrum maths (numpy only, no GUI).
+- `tests/test_regression.py` — regression tests against published numbers.
+- `tests/test_spectrum_sim.py` — tests for the spectrum simulation.
