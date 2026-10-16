@@ -192,6 +192,10 @@ class BandGapTable(unittest.TestCase):
                          ("Diamond", 5.5)):
             self.assertEqual(A.BAND_GAPS_EV[name], (eg, A.AVANTAGE), name)
 
+    def test_rough_estimates_are_labelled(self):
+        self.assertEqual(A.BAND_GAPS_EV["In2O3"], (2.9, A.ROUGH))
+        self.assertEqual(A.BAND_GAPS_EV["PbSO4"], (4.5, A.ROUGH))
+
     def test_new_user_list_entries(self):
         for name, eg in (("InP", 1.27), ("GaP", 2.25), ("CdTe", 1.44), ("PbS", 0.37)):
             self.assertEqual(A.BAND_GAPS_EV[name], (eg, A.USER_LIST), name)
@@ -227,8 +231,8 @@ class ComputedImfpPresets(unittest.TestCase):
 
     def test_new_pairs_are_present(self):
         subs = ("Mg (metal)", "Ge (elemental)", "Zn (metal, LMM)", "Zr (metal)", "Hf (metal)", "Sn (metal)", "SiC",
-                "GaAs (Ga 3d)", "GaP (Ga 3d)", "CdTe (Te 3d5/2)")
-        ovs = ("MgO", "GeO2", "ZnO (LMM)", "ZrO2", "HfO2", "SnO2", "Ga2O3", "TeO2")
+                "GaAs (Ga 3d)", "GaP (Ga 3d)", "CdTe (Te 3d5/2)", "InP (In 3d5/2)", "PbS (S 2p)")
+        ovs = ("MgO", "GeO2", "ZnO (LMM)", "ZrO2", "HfO2", "SnO2", "Ga2O3", "TeO2", "In2O3", "PbSO4")
         for k in subs:
             self.assertIn(k, A.SUBSTRATES, k)
         for k in ovs:
@@ -236,7 +240,7 @@ class ComputedImfpPresets(unittest.TestCase):
 
     def test_user_supplied_densities_are_used_where_the_avantage_file_has_them(self):
         for key, rho in (("Mg (metal)", 1.7), ("Ge (elemental)", 5.323), ("Sn (metal)", 7.31), ("SiC", 3.21),
-                         ("GaAs (Ga 3d)", 5.31)):
+                         ("GaAs (Ga 3d)", 5.31), ("InP (In 3d5/2)", 4.81), ("PbS (S 2p)", 7.60)):
             self.assertEqual(A.SUBSTRATES[key].density_g_cm3, rho, key)
         for key, rho in (("ZnO (LMM)", 5.61), ("ZrO2", 5.68), ("HfO2", 9.68)):
             self.assertEqual(A.OVERLAYERS[key].density_g_cm3, rho, key)
@@ -254,7 +258,8 @@ class ComputedImfpPresets(unittest.TestCase):
     def test_metal_oxide_density_ratios_are_plausible(self):
         pairs = (("Mg (metal)", "MgO"), ("Ge (elemental)", "GeO2"), ("Zr (metal)", "ZrO2"), ("Hf (metal)", "HfO2"),
                  ("Sn (metal)", "SnO2"), ("Zn (metal, LMM)", "ZnO (LMM)"), ("SiC", "SiO2"),
-                 ("GaAs (Ga 3d)", "Ga2O3"), ("GaP (Ga 3d)", "Ga2O3"), ("CdTe (Te 3d5/2)", "TeO2"))
+                 ("GaAs (Ga 3d)", "Ga2O3"), ("GaP (Ga 3d)", "Ga2O3"), ("CdTe (Te 3d5/2)", "TeO2"),
+                 ("InP (In 3d5/2)", "In2O3"), ("PbS (S 2p)", "PbSO4"))
         for sub, ov in pairs:
             s, o = A.SUBSTRATES[sub], A.OVERLAYERS[ov]
             r = (A.volume_density(s.density_g_cm3, s.molar_mass_g_mol, s.atoms_per_formula)

@@ -78,6 +78,7 @@ AVANTAGE = "Thermo Avantage Densities.txt"
 BIESINGER = "Biesinger, Surf. Interface Anal. 2017, 49, 1325"
 USER_LIST = "user-supplied list (unsourced)"
 HANDBOOK = "standard literature value, not from the user's files"
+ROUGH = "rough estimate, not from the user's files"
 BAND_GAPS_EV = {
     "SiO2": (8.9, AVANTAGE), "Sn (gray)": (0.08, AVANTAGE), "HfO2": (5.7, AVANTAGE), "ZrO2": (6.0, AVANTAGE),
     "Si": (1.12, AVANTAGE), "TiO2": (3.05, AVANTAGE), "Si3N4": (4.65, AVANTAGE), "Al2O3": (8.7, AVANTAGE),
@@ -85,7 +86,7 @@ BAND_GAPS_EV = {
     "Diamond": (5.5, AVANTAGE), "Graphite": (0.0, AVANTAGE), "Ge": (0.67, AVANTAGE),
     "Cu2O": (2.1, BIESINGER), "CuO": (1.25, BIESINGER), "Cu(OH)2": (1.85, BIESINGER),
     "MgO": (7.8, HANDBOOK), "GeO2": (5.6, HANDBOOK), "SnO2": (3.6, HANDBOOK), "Ga2O3": (4.8, HANDBOOK),
-    "TeO2": (3.7, HANDBOOK),
+    "TeO2": (3.7, HANDBOOK), "In2O3": (2.9, ROUGH), "PbSO4": (4.5, ROUGH),
     "InP": (1.27, USER_LIST), "GaP": (2.25, USER_LIST), "CdTe": (1.44, USER_LIST), "PbS": (0.37, USER_LIST),
 }
 
@@ -207,6 +208,23 @@ SUBSTRATES = {
              "(unsourced)). IMFP 2.37 nm COMPUTED with TPP-2M (Nv = 8) at KE ~914 eV (Al Ka); not a published value. BE is "
              "a typical literature value, not from your files. 1 Te atom per formula unit; pair with TeO2 (Te 3d5/2 shifts "
              "~4 eV). CdO cannot be resolved from CdTe by Cd 3d and is not modelled.",
+    ),
+    "InP (In 3d5/2)": Compound(
+        "InP (In 3d5/2)", density_g_cm3=4.81, molar_mass_g_mol=145.792,
+        atoms_per_formula=1, core_level="In 3d5/2", be_ev=444.6, imfp_nm=2.40,
+        note="Density 4.81 g/cm3 (your message); band gap 1.27 eV (user-supplied list (unsourced)). IMFP 2.40 nm COMPUTED "
+             "with TPP-2M (Nv = 8) at KE ~1042 eV (Al Ka); not a published value. BE is a typical literature value, not "
+             "from your files. 1 In atom per formula unit; pair with In2O3. The In 3d5/2 oxide shift is only ~0.3-0.5 eV, "
+             "so the fit is hard; the In MNN Auger line separates them better. Native oxide also contains InPO4, which "
+             "this preset does not model.",
+    ),
+    "PbS (S 2p)": Compound(
+        "PbS (S 2p)", density_g_cm3=7.6, molar_mass_g_mol=239.26,
+        atoms_per_formula=1, core_level="S 2p3/2", be_ev=161, imfp_nm=2.63,
+        note="Density 7.6 g/cm3 (your message); band gap 0.37 eV (user-supplied list (unsourced)). IMFP 2.63 nm COMPUTED "
+             "with TPP-2M (Nv = 10) at KE ~1326 eV (Al Ka); not a published value. BE is a typical literature value, not "
+             "from your files. 1 S atom per formula unit; pair with PbSO4 (S 2p3/2 sulfate shift ~7.5 eV, easily "
+             "resolved). PbO is not modelled (Pb 4f cannot separate it well).",
     ),
     "Custom / manual entry": Compound(
         "Custom", density_g_cm3=1.0, molar_mass_g_mol=1.0,
@@ -351,6 +369,22 @@ OVERLAYERS = {
              "value. BE is a typical literature value, not from your files. 6.04 g/cm3 is tetragonal paratellurite "
              "(orthorhombic tellurite is 5.67) - edit for your film.",
     ),
+    "In2O3": Compound(
+        "In2O3", density_g_cm3=7.18, molar_mass_g_mol=277.633,
+        atoms_per_formula=2, core_level="In 3d5/2", be_ev=444.9, imfp_nm=1.88,
+        note="Density 7.18 g/cm3 (standard handbook value, not from your files); band gap 2.9 eV (rough estimate, not from "
+             "your files). IMFP 1.88 nm COMPUTED with TPP-2M (Nv = 24) at KE ~1042 eV (Al Ka); not a published value. BE "
+             "is a typical literature value, not from your files. 2 In atoms per formula unit. See the InP note on the "
+             "small In 3d5/2 shift.",
+    ),
+    "PbSO4": Compound(
+        "PbSO4", density_g_cm3=6.29, molar_mass_g_mol=303.256,
+        atoms_per_formula=1, core_level="S 2p3/2", be_ev=168.6, imfp_nm=2.32,
+        note="Density 6.29 g/cm3 (standard handbook value, not from your files); band gap 4.5 eV (rough estimate, not from "
+             "your files). IMFP 2.32 nm COMPUTED with TPP-2M (Nv = 34) at KE ~1318 eV (Al Ka); not a published value. BE "
+             "is a typical literature value, not from your files. 6.29 g/cm3 is anglesite. The 4.5 eV band gap is a ROUGH "
+             "estimate (IMFP is only mildly sensitive to it).",
+    ),
     "SiON (oxynitride, approx.)": Compound(
         "SiON", density_g_cm3=2.50, molar_mass_g_mol=87.09,
         atoms_per_formula=1, core_level="Si 2p3/2", be_ev=102.3, imfp_nm=3.30,
@@ -366,6 +400,10 @@ OVERLAYERS = {
 
 # Band gap per preset (eV): metals are 0, None = not known (the thickness equation itself doesn't use it).
 _PRESET_BAND_GAP = {
+    "InP (In 3d5/2)": BAND_GAPS_EV["InP"][0],
+    "PbS (S 2p)": BAND_GAPS_EV["PbS"][0],
+    "In2O3": BAND_GAPS_EV["In2O3"][0],
+    "PbSO4": BAND_GAPS_EV["PbSO4"][0],
     "Mg (metal)": 0.0,
     "Ge (elemental)": BAND_GAPS_EV["Ge"][0],
     "Zn (metal, LMM)": 0.0,
@@ -401,6 +439,10 @@ for _presets in (SUBSTRATES, OVERLAYERS):
 # Inputs behind every COMPUTED (TPP-2M) IMFP preset: name -> (valence electrons per formula unit, KE in eV).
 # Density, molar mass and band gap come from the preset itself, so each imfp_nm can be regenerated and tested.
 TPP2M_INPUTS = {
+    "InP (In 3d5/2)": (8, 1042.0),
+    "PbS (S 2p)": (10, 1325.6),
+    "In2O3": (24, 1041.7),
+    "PbSO4": (34, 1318.0),
     "Mg (metal)": (2, 1436.9),
     "Ge (elemental)": (4, 1457.2),
     "Zn (metal, LMM)": (2, 992.0),
@@ -856,7 +898,8 @@ values). SiON is a rough placeholder.
 
 Also included: Mg/MgO, Ge/GeO2, Zn/ZnO (use the Zn LMM line), Zr/ZrO2, Hf/HfO2,
 Sn/SnO2, SiC (with the SiO2 overlayer), GaAs and GaP (Ga 3d, with Ga2O3) and
-CdTe (Te 3d5/2, with TeO2). Densities and band gaps come from the Avantage file
+CdTe (Te 3d5/2, with TeO2), InP (In 3d5/2, with In2O3) and PbS (S 2p, with
+PbSO4). Densities and band gaps come from the Avantage file
 where it has them, otherwise from standard handbook values (not from your files);
 IMFPs are COMPUTED with TPP-2M. Check Nm/Nox against the Pilling-Bedworth ratio
 if in doubt, and edit anything that doesn't match your film. All presets are
