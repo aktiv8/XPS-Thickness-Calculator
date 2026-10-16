@@ -212,6 +212,56 @@ class BandGapTable(unittest.TestCase):
                 self.assertEqual(c.band_gap_ev, A.BAND_GAPS_EV[name][0], key)
 
 
+class ComputedImfpPresets(unittest.TestCase):
+    """Every preset whose IMFP is COMPUTED must be regenerable from TPP2M_INPUTS plus its own density/gap/mass."""
+
+    @staticmethod
+    def _find(key):
+        return A.SUBSTRATES.get(key) or A.OVERLAYERS[key]
+
+    def test_each_computed_imfp_matches_tpp2m(self):
+        for key, (nv, ke) in A.TPP2M_INPUTS.items():
+            c = self._find(key)
+            expected = A.tpp2m_imfp_nm(ke, c.density_g_cm3, c.molar_mass_g_mol, nv, c.band_gap_ev)
+            self.assertAlmostEqual(c.imfp_nm, expected, delta=0.006, msg=key)
+
+    def test_new_pairs_are_present(self):
+        subs = ("Mg (metal)", "Ge (elemental)", "Zn (metal, LMM)", "Zr (metal)", "Hf (metal)", "Sn (metal)", "SiC",
+                "GaAs (Ga 3d)", "GaP (Ga 3d)", "CdTe (Te 3d5/2)")
+        ovs = ("MgO", "GeO2", "ZnO (LMM)", "ZrO2", "HfO2", "SnO2", "Ga2O3", "TeO2")
+        for k in subs:
+            self.assertIn(k, A.SUBSTRATES, k)
+        for k in ovs:
+            self.assertIn(k, A.OVERLAYERS, k)
+
+    def test_user_supplied_densities_are_used_where_the_avantage_file_has_them(self):
+        for key, rho in (("Mg (metal)", 1.7), ("Ge (elemental)", 5.323), ("Sn (metal)", 7.31), ("SiC", 3.21),
+                         ("GaAs (Ga 3d)", 5.31)):
+            self.assertEqual(A.SUBSTRATES[key].density_g_cm3, rho, key)
+        for key, rho in (("ZnO (LMM)", 5.61), ("ZrO2", 5.68), ("HfO2", 9.68)):
+            self.assertEqual(A.OVERLAYERS[key].density_g_cm3, rho, key)
+
+    def test_all_presets_are_physically_sane(self):
+        for presets in (A.SUBSTRATES, A.OVERLAYERS):
+            for key, c in presets.items():
+                if c is None or key.startswith("Custom"):
+                    continue
+                self.assertGreater(c.density_g_cm3, 0, key)
+                self.assertGreater(c.molar_mass_g_mol, 0, key)
+                self.assertGreater(c.imfp_nm, 0.3, key)
+                self.assertLess(c.imfp_nm, 6.0, key)
+
+    def test_metal_oxide_density_ratios_are_plausible(self):
+        pairs = (("Mg (metal)", "MgO"), ("Ge (elemental)", "GeO2"), ("Zr (metal)", "ZrO2"), ("Hf (metal)", "HfO2"),
+                 ("Sn (metal)", "SnO2"), ("Zn (metal, LMM)", "ZnO (LMM)"), ("SiC", "SiO2"),
+                 ("GaAs (Ga 3d)", "Ga2O3"), ("GaP (Ga 3d)", "Ga2O3"), ("CdTe (Te 3d5/2)", "TeO2"))
+        for sub, ov in pairs:
+            s, o = A.SUBSTRATES[sub], A.OVERLAYERS[ov]
+            r = (A.volume_density(s.density_g_cm3, s.molar_mass_g_mol, s.atoms_per_formula)
+                 / A.volume_density(o.density_g_cm3, o.molar_mass_g_mol, o.atoms_per_formula))
+            self.assertTrue(0.5 < r < 4.0, f"{sub}->{ov}: Nm/Nox = {r:.2f}")
+
+
 class EquationProperties(unittest.TestCase):
     def test_mixed_layer_reduces_to_single_when_components_identical(self):
         one = _thickness(90, 1.5, 2.6, 35, 1.0, 2.8, 65)["d_nm"]

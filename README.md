@@ -62,6 +62,12 @@ Si, SiO₂, Si₃N₄, Ti and TiO₂ take density and band gap from the Thermo A
 (3.09/3.89/3.00/2.19/2.17 nm at Al Kα). Note the 3.44 g/cm³ Si₃N₄ density is high for
 thin amorphous films. SiON is still a rough placeholder.
 
+More pairs: Mg/MgO, Ge/GeO₂, Zn/ZnO (Zn LMM line), Zr/ZrO₂, Hf/HfO₂, Sn/SnO₂, SiC (→ SiO₂), GaAs and GaP
+(Ga 3d → Ga₂O₃) and CdTe (Te 3d5/2 → TeO₂). Densities/band gaps come from the Avantage file where it has
+them, otherwise standard handbook values (not from the user's files); IMFPs are computed with TPP-2M.
+Their Nm/Nox ratios agree with the Pilling–Bedworth ratios (Mg 0.79, Zr 1.55, Hf 1.62, Sn 1.34, Zn 1.58).
+Not included: InP, PbS, ZnS, diamond and graphite (see CLAUDE.md for why).
+
 `BAND_GAPS_EV` in `app.py` is a reference table of band gaps (used only for TPP-2M IMFP
 estimates): the Avantage file's values, Biesinger's Cu oxide gaps, and four user-supplied
 additions (InP 1.27, GaP 2.25, CdTe 1.44, PbS 0.37 eV). Existing entries are never overwritten.

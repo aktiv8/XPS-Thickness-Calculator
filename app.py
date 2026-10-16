@@ -77,12 +77,15 @@ class Compound:
 AVANTAGE = "Thermo Avantage Densities.txt"
 BIESINGER = "Biesinger, Surf. Interface Anal. 2017, 49, 1325"
 USER_LIST = "user-supplied list (unsourced)"
+HANDBOOK = "standard literature value, not from the user's files"
 BAND_GAPS_EV = {
     "SiO2": (8.9, AVANTAGE), "Sn (gray)": (0.08, AVANTAGE), "HfO2": (5.7, AVANTAGE), "ZrO2": (6.0, AVANTAGE),
     "Si": (1.12, AVANTAGE), "TiO2": (3.05, AVANTAGE), "Si3N4": (4.65, AVANTAGE), "Al2O3": (8.7, AVANTAGE),
     "GaAs": (1.35, AVANTAGE), "SiC": (2.86, AVANTAGE), "ZnO": (3.2, AVANTAGE), "ZnS": (3.6, AVANTAGE),
     "Diamond": (5.5, AVANTAGE), "Graphite": (0.0, AVANTAGE), "Ge": (0.67, AVANTAGE),
     "Cu2O": (2.1, BIESINGER), "CuO": (1.25, BIESINGER), "Cu(OH)2": (1.85, BIESINGER),
+    "MgO": (7.8, HANDBOOK), "GeO2": (5.6, HANDBOOK), "SnO2": (3.6, HANDBOOK), "Ga2O3": (4.8, HANDBOOK),
+    "TeO2": (3.7, HANDBOOK),
     "InP": (1.27, USER_LIST), "GaP": (2.25, USER_LIST), "CdTe": (1.44, USER_LIST), "PbS": (0.37, USER_LIST),
 }
 
@@ -130,6 +133,80 @@ SUBSTRATES = {
         atoms_per_formula=1, core_level="Ti 2p3/2", be_ev=453.9, imfp_nm=2.19,
         note="Density from Thermo Avantage Densities.txt. IMFP 2.19 nm COMPUTED with TPP-2M (Nv = 4) at KE ~1033 eV "
              "(Al Ka); not a published value. BE is a typical literature value, not from the file.",
+    ),
+    "Mg (metal)": Compound(
+        "Mg (metal)", density_g_cm3=1.7, molar_mass_g_mol=24.305,
+        atoms_per_formula=1, core_level="Mg 2p", be_ev=49.7, imfp_nm=3.85,
+        note="Density 1.7 g/cm3 (Thermo Avantage Densities.txt); metal (no band gap). IMFP 3.85 nm COMPUTED with TPP-2M "
+             "(Nv = 2) at KE ~1437 eV (Al Ka); not a published value. BE is a typical literature value, not from your "
+             "files. Mg 2p oxide shift is only ~1 eV; the Mg KLL Auger line separates metal and oxide better.",
+    ),
+    "Ge (elemental)": Compound(
+        "Ge (elemental)", density_g_cm3=5.323, molar_mass_g_mol=72.63,
+        atoms_per_formula=1, core_level="Ge 3d", be_ev=29.4, imfp_nm=2.99,
+        note="Density 5.323 g/cm3 (Thermo Avantage Densities.txt); band gap 0.67 eV (Thermo Avantage Densities.txt). IMFP "
+             "2.99 nm COMPUTED with TPP-2M (Nv = 4) at KE ~1457 eV (Al Ka); not a published value. BE is a typical "
+             "literature value, not from your files.",
+    ),
+    "Zn (metal, LMM)": Compound(
+        "Zn (metal, LMM)", density_g_cm3=7.14, molar_mass_g_mol=65.38,
+        atoms_per_formula=1, core_level="Zn LMM", be_ev=0, imfp_nm=2.39,
+        note="Density 7.14 g/cm3 (standard handbook value, not from your files); metal (no band gap). IMFP 2.39 nm "
+             "COMPUTED with TPP-2M (Nv = 2) at KE ~992 eV (Al Ka); not a published value. Zn 2p3/2 cannot resolve metal "
+             "from ZnO (<0.3 eV), so use the Zn L3M4,5M4,5 line (KE ~992 eV metal, ~988 eV oxide); BE left blank.",
+    ),
+    "Zr (metal)": Compound(
+        "Zr (metal)", density_g_cm3=6.52, molar_mass_g_mol=91.224,
+        atoms_per_formula=1, core_level="Zr 3d5/2", be_ev=178.8, imfp_nm=2.72,
+        note="Density 6.52 g/cm3 (standard handbook value, not from your files); metal (no band gap). IMFP 2.72 nm "
+             "COMPUTED with TPP-2M (Nv = 4) at KE ~1308 eV (Al Ka); not a published value. BE is a typical literature "
+             "value, not from your files.",
+    ),
+    "Hf (metal)": Compound(
+        "Hf (metal)", density_g_cm3=13.31, molar_mass_g_mol=178.49,
+        atoms_per_formula=1, core_level="Hf 4f7/2", be_ev=14.2, imfp_nm=2.79,
+        note="Density 13.31 g/cm3 (standard handbook value, not from your files); metal (no band gap). IMFP 2.79 nm "
+             "COMPUTED with TPP-2M (Nv = 4) at KE ~1472 eV (Al Ka); not a published value. BE is a typical literature "
+             "value, not from your files.",
+    ),
+    "Sn (metal)": Compound(
+        "Sn (metal)", density_g_cm3=7.31, molar_mass_g_mol=118.71,
+        atoms_per_formula=1, core_level="Sn 3d5/2", be_ev=484.9, imfp_nm=2.31,
+        note="Density 7.31 g/cm3 (Thermo Avantage Densities.txt); metal (no band gap). IMFP 2.31 nm COMPUTED with TPP-2M "
+             "(Nv = 4) at KE ~1002 eV (Al Ka); not a published value. BE is a typical literature value, not from your "
+             "files. Density is the Avantage 'Sn white' entry.",
+    ),
+    "SiC": Compound(
+        "SiC", density_g_cm3=3.21, molar_mass_g_mol=40.097,
+        atoms_per_formula=1, core_level="Si 2p", be_ev=100.4, imfp_nm=2.90,
+        note="Density 3.21 g/cm3 (Thermo Avantage Densities.txt); band gap 2.86 eV (Thermo Avantage Densities.txt). IMFP "
+             "2.90 nm COMPUTED with TPP-2M (Nv = 8) at KE ~1386 eV (Al Ka); not a published value. BE is a typical "
+             "literature value, not from your files. 1 Si atom per formula unit; oxide is the SiO2 overlayer preset (Si 2p "
+             "at ~103.4 eV).",
+    ),
+    "GaAs (Ga 3d)": Compound(
+        "GaAs (Ga 3d)", density_g_cm3=5.31, molar_mass_g_mol=144.645,
+        atoms_per_formula=1, core_level="Ga 3d", be_ev=19.3, imfp_nm=3.02,
+        note="Density 5.31 g/cm3 (Thermo Avantage Densities.txt); band gap 1.35 eV (Thermo Avantage Densities.txt). IMFP "
+             "3.02 nm COMPUTED with TPP-2M (Nv = 8) at KE ~1467 eV (Al Ka); not a published value. BE is a typical "
+             "literature value, not from your files. 1 Ga atom per formula unit; pair with Ga2O3. Native oxide also "
+             "contains As oxides, which this preset does not model.",
+    ),
+    "GaP (Ga 3d)": Compound(
+        "GaP (Ga 3d)", density_g_cm3=4.14, molar_mass_g_mol=100.697,
+        atoms_per_formula=1, core_level="Ga 3d", be_ev=19.2, imfp_nm=3.04,
+        note="Density 4.14 g/cm3 (standard handbook value, not from your files); band gap 2.25 eV (user-supplied list "
+             "(unsourced)). IMFP 3.04 nm COMPUTED with TPP-2M (Nv = 8) at KE ~1467 eV (Al Ka); not a published value. BE "
+             "is a typical literature value, not from your files. 1 Ga atom per formula unit; pair with Ga2O3. Native "
+             "oxide is often partly GaPO4, which this preset does not model.",
+    ),
+    "CdTe (Te 3d5/2)": Compound(
+        "CdTe (Te 3d5/2)", density_g_cm3=5.85, molar_mass_g_mol=240.014,
+        atoms_per_formula=1, core_level="Te 3d5/2", be_ev=572.1, imfp_nm=2.37,
+        note="Density 5.85 g/cm3 (standard handbook value, not from your files); band gap 1.44 eV (user-supplied list "
+             "(unsourced)). IMFP 2.37 nm COMPUTED with TPP-2M (Nv = 8) at KE ~914 eV (Al Ka); not a published value. BE is "
+             "a typical literature value, not from your files. 1 Te atom per formula unit; pair with TeO2 (Te 3d5/2 shifts "
+             "~4 eV). CdO cannot be resolved from CdTe by Cd 3d and is not modelled.",
     ),
     "Custom / manual entry": Compound(
         "Custom", density_g_cm3=1.0, molar_mass_g_mol=1.0,
@@ -213,6 +290,67 @@ OVERLAYERS = {
         note="Density 4.26 g/cm3 and band gap 3.05 eV from Thermo Avantage Densities.txt. IMFP 2.17 nm COMPUTED with "
              "TPP-2M (Nv = 16) at KE ~1033 eV (Al Ka); not a published value. BE is a typical literature value, not from the file.",
     ),
+    "MgO": Compound(
+        "MgO", density_g_cm3=3.58, molar_mass_g_mol=40.304,
+        atoms_per_formula=1, core_level="Mg 2p", be_ev=50.8, imfp_nm=3.22,
+        note="Density 3.58 g/cm3 (standard handbook value, not from your files); band gap 7.8 eV (standard handbook value, "
+             "not from your files). IMFP 3.22 nm COMPUTED with TPP-2M (Nv = 8) at KE ~1436 eV (Al Ka); not a published "
+             "value. BE is a typical literature value, not from your files. Mg 2p oxide shift is only ~1 eV; the Mg KLL "
+             "Auger line separates metal and oxide better.",
+    ),
+    "GeO2": Compound(
+        "GeO2", density_g_cm3=3.64, molar_mass_g_mol=104.628,
+        atoms_per_formula=1, core_level="Ge 3d", be_ev=32.9, imfp_nm=3.03,
+        note="Density 3.64 g/cm3 (standard handbook value, not from your files); band gap 5.6 eV (standard handbook value, "
+             "not from your files). IMFP 3.03 nm COMPUTED with TPP-2M (Nv = 16) at KE ~1454 eV (Al Ka); not a published "
+             "value. BE is a typical literature value, not from your files. 3.64 g/cm3 is amorphous GeO2 (hexagonal 4.23, "
+             "rutile 6.24) - edit for your film.",
+    ),
+    "ZnO (LMM)": Compound(
+        "ZnO (LMM)", density_g_cm3=5.61, molar_mass_g_mol=81.379,
+        atoms_per_formula=1, core_level="Zn LMM", be_ev=0, imfp_nm=1.95,
+        note="Density 5.61 g/cm3 (Thermo Avantage Densities.txt); band gap 3.2 eV (Thermo Avantage Densities.txt). IMFP "
+             "1.95 nm COMPUTED with TPP-2M (Nv = 8) at KE ~988 eV (Al Ka); not a published value. Use with areas from the "
+             "Zn L3M4,5M4,5 line (KE ~988 eV oxide); BE left blank.",
+    ),
+    "ZrO2": Compound(
+        "ZrO2", density_g_cm3=5.68, molar_mass_g_mol=123.222,
+        atoms_per_formula=1, core_level="Zr 3d5/2", be_ev=182.3, imfp_nm=2.42,
+        note="Density 5.68 g/cm3 (Thermo Avantage Densities.txt); band gap 6 eV (Thermo Avantage Densities.txt). IMFP 2.42 "
+             "nm COMPUTED with TPP-2M (Nv = 16) at KE ~1304 eV (Al Ka); not a published value. BE is a typical literature "
+             "value, not from your files. Band gap is the Avantage average (5-7 eV depending on phase).",
+    ),
+    "HfO2": Compound(
+        "HfO2", density_g_cm3=9.68, molar_mass_g_mol=210.488,
+        atoms_per_formula=1, core_level="Hf 4f7/2", be_ev=16.8, imfp_nm=2.26,
+        note="Density 9.68 g/cm3 (Thermo Avantage Densities.txt); band gap 5.7 eV (Thermo Avantage Densities.txt). IMFP "
+             "2.26 nm COMPUTED with TPP-2M (Nv = 16) at KE ~1470 eV (Al Ka); not a published value. BE is a typical "
+             "literature value, not from your files. Density is the crystalline value; thin amorphous HfO2 films are "
+             "lower.",
+    ),
+    "SnO2": Compound(
+        "SnO2", density_g_cm3=6.95, molar_mass_g_mol=150.708,
+        atoms_per_formula=1, core_level="Sn 3d5/2", be_ev=486.6, imfp_nm=1.80,
+        note="Density 6.95 g/cm3 (standard handbook value, not from your files); band gap 3.6 eV (standard handbook value, "
+             "not from your files). IMFP 1.80 nm COMPUTED with TPP-2M (Nv = 16) at KE ~1000 eV (Al Ka); not a published "
+             "value. BE is a typical literature value, not from your files. SnO (Sn 3d5/2 ~486.0 eV) is not modelled.",
+    ),
+    "Ga2O3": Compound(
+        "Ga2O3", density_g_cm3=5.88, molar_mass_g_mol=187.443,
+        atoms_per_formula=2, core_level="Ga 3d", be_ev=20.7, imfp_nm=2.56,
+        note="Density 5.88 g/cm3 (standard handbook value, not from your files); band gap 4.8 eV (standard handbook value, "
+             "not from your files). IMFP 2.56 nm COMPUTED with TPP-2M (Nv = 24) at KE ~1466 eV (Al Ka); not a published "
+             "value. BE is a typical literature value, not from your files. 2 Ga atoms per formula unit; beta-Ga2O3 "
+             "density.",
+    ),
+    "TeO2": Compound(
+        "TeO2", density_g_cm3=6.04, molar_mass_g_mol=159.598,
+        atoms_per_formula=1, core_level="Te 3d5/2", be_ev=576, imfp_nm=1.76,
+        note="Density 6.04 g/cm3 (standard handbook value, not from your files); band gap 3.7 eV (standard handbook value, "
+             "not from your files). IMFP 1.76 nm COMPUTED with TPP-2M (Nv = 18) at KE ~911 eV (Al Ka); not a published "
+             "value. BE is a typical literature value, not from your files. 6.04 g/cm3 is tetragonal paratellurite "
+             "(orthorhombic tellurite is 5.67) - edit for your film.",
+    ),
     "SiON (oxynitride, approx.)": Compound(
         "SiON", density_g_cm3=2.50, molar_mass_g_mol=87.09,
         atoms_per_formula=1, core_level="Si 2p3/2", be_ev=102.3, imfp_nm=3.30,
@@ -228,6 +366,24 @@ OVERLAYERS = {
 
 # Band gap per preset (eV): metals are 0, None = not known (the thickness equation itself doesn't use it).
 _PRESET_BAND_GAP = {
+    "Mg (metal)": 0.0,
+    "Ge (elemental)": BAND_GAPS_EV["Ge"][0],
+    "Zn (metal, LMM)": 0.0,
+    "Zr (metal)": 0.0,
+    "Hf (metal)": 0.0,
+    "Sn (metal)": 0.0,
+    "SiC": BAND_GAPS_EV["SiC"][0],
+    "GaAs (Ga 3d)": BAND_GAPS_EV["GaAs"][0],
+    "GaP (Ga 3d)": BAND_GAPS_EV["GaP"][0],
+    "CdTe (Te 3d5/2)": BAND_GAPS_EV["CdTe"][0],
+    "MgO": BAND_GAPS_EV["MgO"][0],
+    "GeO2": BAND_GAPS_EV["GeO2"][0],
+    "ZnO (LMM)": BAND_GAPS_EV["ZnO"][0],
+    "ZrO2": BAND_GAPS_EV["ZrO2"][0],
+    "HfO2": BAND_GAPS_EV["HfO2"][0],
+    "SnO2": BAND_GAPS_EV["SnO2"][0],
+    "Ga2O3": BAND_GAPS_EV["Ga2O3"][0],
+    "TeO2": BAND_GAPS_EV["TeO2"][0],
     "Cu (metal, LMM)": 0.0, "Cu (metal, 2p3/2)": 0.0, "W (metal)": 0.0, "Al (metal)": 0.0, "Al (metal, Mg Ka)": 0.0,
     "Ti (metal)": 0.0, "Si (metal/elemental)": BAND_GAPS_EV["Si"][0],
     "CuO (LMM)": BAND_GAPS_EV["CuO"][0], "CuO (2p3/2)": BAND_GAPS_EV["CuO"][0],
@@ -240,6 +396,39 @@ for _presets in (SUBSTRATES, OVERLAYERS):
     for _key, _compound in _presets.items():
         if _compound is not None and _key in _PRESET_BAND_GAP:
             _compound.band_gap_ev = _PRESET_BAND_GAP[_key]
+
+
+# Inputs behind every COMPUTED (TPP-2M) IMFP preset: name -> (valence electrons per formula unit, KE in eV).
+# Density, molar mass and band gap come from the preset itself, so each imfp_nm can be regenerated and tested.
+TPP2M_INPUTS = {
+    "Mg (metal)": (2, 1436.9),
+    "Ge (elemental)": (4, 1457.2),
+    "Zn (metal, LMM)": (2, 992.0),
+    "Zr (metal)": (4, 1307.8),
+    "Hf (metal)": (4, 1472.4),
+    "Sn (metal)": (4, 1001.7),
+    "SiC": (8, 1386.2),
+    "GaAs (Ga 3d)": (8, 1467.3),
+    "GaP (Ga 3d)": (8, 1467.4),
+    "CdTe (Te 3d5/2)": (8, 914.5),
+    "MgO": (8, 1435.8),
+    "GeO2": (16, 1453.7),
+    "ZnO (LMM)": (8, 988.0),
+    "ZrO2": (16, 1304.3),
+    "HfO2": (16, 1469.8),
+    "SnO2": (16, 1000.0),
+    "Ga2O3": (24, 1465.9),
+    "TeO2": (18, 910.6),
+    "Cu (metal, 2p3/2)": (11, 554.0),
+    "CuO (2p3/2)": (17, 554.0),
+    "Cu2O (2p3/2)": (28, 554.0),
+    "Cu(OH)2 (2p3/2)": (25, 554.0),
+    "Si (metal/elemental)": (4, 1387.3),
+    "SiO2": (16, 1387.3),
+    "Si3N4": (32, 1387.3),
+    "Ti (metal)": (4, 1032.7),
+    "TiO2": (16, 1032.7),
+}
 
 
 def volume_density(density_g_cm3: float, molar_mass_g_mol: float, atoms_per_formula: float) -> float:
@@ -663,7 +852,14 @@ tests/test_regression.py:
 
 Si, SiO2, Si3N4, Ti and TiO2 use densities and band gaps from the Thermo
 Avantage Densities.txt, with IMFPs COMPUTED here by TPP-2M (not published
-values). SiON is a rough placeholder. All presets are
+values). SiON is a rough placeholder.
+
+Also included: Mg/MgO, Ge/GeO2, Zn/ZnO (use the Zn LMM line), Zr/ZrO2, Hf/HfO2,
+Sn/SnO2, SiC (with the SiO2 overlayer), GaAs and GaP (Ga 3d, with Ga2O3) and
+CdTe (Te 3d5/2, with TeO2). Densities and band gaps come from the Avantage file
+where it has them, otherwise from standard handbook values (not from your files);
+IMFPs are COMPUTED with TPP-2M. Check Nm/Nox against the Pilling-Bedworth ratio
+if in doubt, and edit anything that doesn't match your film. All presets are
 ALL EDITABLE. In particular:
   - IMFP is the most sensitive/uncertain input and depends on the exact
     kinetic energy (i.e. your X-ray source) and the true film density.
