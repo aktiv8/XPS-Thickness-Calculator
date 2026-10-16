@@ -71,12 +71,19 @@ class Compound:
 
 # Substrate ("metal") reference compounds
 SUBSTRATES = {
-    "Cu (metal)": Compound(
-        "Cu (metal)", density_g_cm3=8.96, molar_mass_g_mol=63.546,
-        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=932.63, imfp_nm=1.54,
-        note="Biesinger, Surf. Interface Anal. 2017, 49, 1325. IMFP 1.54 nm (NIST SRD 71, TPP-2M) is for Cu LMM Auger "
-             "electrons, KE ~918 eV (Cu L3M4,5M4,5 KE 918.61 eV). If your areas come from Cu 2p3/2 (KE ~554 eV with "
-             "Al Ka) the IMFPs are smaller - replace all Cu/oxide IMFPs consistently.",
+    "Cu (metal, LMM)": Compound(
+        "Cu (metal, LMM)", density_g_cm3=8.96, molar_mass_g_mol=63.546,
+        atoms_per_formula=1, core_level="Cu LMM", be_ev=0.0, imfp_nm=1.54,
+        note="Biesinger, Surf. Interface Anal. 2017, 49, 1325. IMFP 1.54 nm for Cu L3M4,5M4,5 Auger electrons, KE ~918 eV "
+             "(Cu LMM KE 918.61 eV; Cu 2p3/2 BE 932.63 eV). Use with areas from the Cu LMM fit; for Cu 2p3/2 areas "
+             "pick the '2p3/2' presets instead (do not mix the two sets).",
+    ),
+    "Cu (metal, 2p3/2)": Compound(
+        "Cu (metal, 2p3/2)", density_g_cm3=8.96, molar_mass_g_mol=63.546,
+        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=932.63, imfp_nm=1.01,
+        note="IMFP 1.01 nm COMPUTED with TPP-2M (Nv = 11) at KE 554 eV (Al Ka - Cu 2p3/2); not a published value. "
+             "For comparison, Biesinger's 1.54 nm (LMM set) is ~6% above TPP-2M at 918 eV, so this metal value may be "
+             "slightly low relative to a NIST SRD 71 element calculation - edit if you have one.",
     ),
     "W (metal)": Compound(
         "W (metal)", density_g_cm3=19.3, molar_mass_g_mol=183.84,
@@ -110,21 +117,40 @@ SUBSTRATES = {
 # Overlayer reference compounds (oxides / hydroxides / nitrides)
 OVERLAYERS = {
     "None": None,
-    "CuO": Compound(
-        "CuO", density_g_cm3=6.31, molar_mass_g_mol=79.55,
-        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=933.76, imfp_nm=1.76,
-        note="Biesinger 2017: 6.31 g/cm3, IMFP 1.76 nm at Cu LMM KE ~918 eV (Cu LMM KE 917.57 eV); Nm/Nox = 1.78.",
+    "CuO (LMM)": Compound(
+        "CuO (LMM)", density_g_cm3=6.31, molar_mass_g_mol=79.55,
+        atoms_per_formula=1, core_level="Cu LMM", be_ev=0.0, imfp_nm=1.76,
+        note="Biesinger 2017: 6.31 g/cm3, IMFP 1.76 nm at Cu LMM KE ~918 eV (Cu LMM KE 917.57 eV; Cu 2p3/2 BE 933.76 eV); "
+             "Nm/Nox = 1.78.",
     ),
-    "Cu2O": Compound(
-        "Cu2O", density_g_cm3=6.00, molar_mass_g_mol=143.09,
-        atoms_per_formula=2, core_level="Cu 2p3/2", be_ev=932.18, imfp_nm=1.77,
-        note="Biesinger 2017: 6.00 g/cm3, IMFP 1.77 nm at Cu LMM KE ~918 eV (Cu LMM KE 916.99 eV); Nm/Nox = 1.68 "
-             "(2 Cu atoms per formula unit). Cu 2p3/2 BE overlaps Cu0, so use the Cu LMM Auger line to separate them.",
+    "Cu2O (LMM)": Compound(
+        "Cu2O (LMM)", density_g_cm3=6.00, molar_mass_g_mol=143.09,
+        atoms_per_formula=2, core_level="Cu LMM", be_ev=0.0, imfp_nm=1.77,
+        note="Biesinger 2017: 6.00 g/cm3, IMFP 1.77 nm at Cu LMM KE ~918 eV (Cu LMM KE 916.99 eV; Cu 2p3/2 BE 932.18 eV); "
+             "Nm/Nox = 1.68 (2 Cu atoms per formula unit). Cu 2p3/2 BE overlaps Cu0, so use the Cu LMM line to separate them.",
     ),
-    "Cu(OH)2": Compound(
-        "Cu(OH)2", density_g_cm3=3.37, molar_mass_g_mol=97.56,
-        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=934.67, imfp_nm=2.19,
-        note="Biesinger 2017: 3.37 g/cm3, IMFP 2.19 nm at Cu LMM KE ~918 eV (Cu LMM KE 916.25 eV); Nm/Nox = 4.08.",
+    "Cu(OH)2 (LMM)": Compound(
+        "Cu(OH)2 (LMM)", density_g_cm3=3.37, molar_mass_g_mol=97.56,
+        atoms_per_formula=1, core_level="Cu LMM", be_ev=0.0, imfp_nm=2.19,
+        note="Biesinger 2017: 3.37 g/cm3, IMFP 2.19 nm at Cu LMM KE ~918 eV (Cu LMM KE 916.25 eV; Cu 2p3/2 BE 934.67 eV); "
+             "Nm/Nox = 4.08.",
+    ),
+    "CuO (2p3/2)": Compound(
+        "CuO (2p3/2)", density_g_cm3=6.31, molar_mass_g_mol=79.55,
+        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=933.76, imfp_nm=1.22,
+        note="IMFP 1.22 nm COMPUTED with TPP-2M (Nv = 17, band gap 1.25 eV) at KE 554 eV (Al Ka); not a published value. "
+             "Same method and inputs reproduce Biesinger's 918 eV value to 0.1%.",
+    ),
+    "Cu2O (2p3/2)": Compound(
+        "Cu2O (2p3/2)", density_g_cm3=6.00, molar_mass_g_mol=143.09,
+        atoms_per_formula=2, core_level="Cu 2p3/2", be_ev=932.18, imfp_nm=1.23,
+        note="IMFP 1.23 nm COMPUTED with TPP-2M (Nv = 28, band gap 2.1 eV) at KE 554 eV (Al Ka); not a published value. "
+             "Cu 2p3/2 BE overlaps Cu0, so a Cu2O/Cu0 split from 2p3/2 alone is unreliable - prefer the Cu LMM line.",
+    ),
+    "Cu(OH)2 (2p3/2)": Compound(
+        "Cu(OH)2 (2p3/2)", density_g_cm3=3.37, molar_mass_g_mol=97.56,
+        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=934.67, imfp_nm=1.51,
+        note="IMFP 1.51 nm COMPUTED with TPP-2M (Nv = 25, band gap 1.85 eV) at KE 554 eV (Al Ka); not a published value.",
     ),
     "WO3": Compound(
         "WO3", density_g_cm3=6.8, molar_mass_g_mol=231.84,
@@ -172,6 +198,23 @@ def volume_density(density_g_cm3: float, molar_mass_g_mol: float, atoms_per_form
     if molar_mass_g_mol <= 0:
         raise ValueError("Molar mass must be > 0")
     return atoms_per_formula * density_g_cm3 / molar_mass_g_mol
+
+
+def tpp2m_imfp_nm(ke_ev: float, density_g_cm3: float, molar_mass_g_mol: float,
+                  valence_electrons: float, band_gap_ev: float = 0.0) -> float:
+    """
+    TPP-2M predictive IMFP (Tanuma, Powell & Penn, Surf. Interface Anal. 1994, 21, 165), in nm.
+    valence_electrons = Nv per formula unit (e.g. Cu 11, CuO 17, Cu2O 28, Cu(OH)2 25); band gap 0 for metals.
+    Used to derive the Cu 2p3/2 presets; not wired into the GUI - edit the IMFP fields by hand.
+    """
+    u = valence_electrons * density_g_cm3 / molar_mass_g_mol
+    e_p = 28.8 * math.sqrt(u)
+    beta = -0.10 + 0.944 / math.sqrt(e_p ** 2 + band_gap_ev ** 2) + 0.069 * density_g_cm3 ** 0.1
+    gamma = 0.191 * density_g_cm3 ** -0.5
+    c = 1.97 - 0.91 * u
+    d = 53.4 - 20.8 * u
+    lam_angstrom = ke_ev / (e_p ** 2 * (beta * math.log(gamma * ke_ev) - c / ke_ev + d / ke_ev ** 2))
+    return lam_angstrom / 10.0
 
 
 @dataclass
@@ -372,13 +415,13 @@ class App(tk.Tk):
             ttk.Label(table, text=h, font=("Segoe UI", 8, "bold"), justify="center").grid(row=0, column=i, padx=2)
 
         ttk.Label(table, text="Substrate", font=("Segoe UI", 9, "bold")).grid(row=1, column=0, sticky="w")
-        self.substrate_row = CompoundRow(table, 2, SUBSTRATES, "Cu (metal)", is_substrate=True)
+        self.substrate_row = CompoundRow(table, 2, SUBSTRATES, "Cu (metal, LMM)", is_substrate=True)
 
         ttk.Separator(table, orient="horizontal").grid(row=3, column=0, columnspan=10, sticky="ew", pady=6)
         ttk.Label(table, text="Overlayer component(s)", font=("Segoe UI", 9, "bold")).grid(row=4, column=0, columnspan=3, sticky="w")
 
         self.overlayer_rows = []
-        defaults = ["CuO", "Cu2O", "Cu(OH)2", "None"]
+        defaults = ["CuO (LMM)", "Cu2O (LMM)", "Cu(OH)2 (LMM)", "None"]
         for i in range(N_OVERLAYER_ROWS):
             row = CompoundRow(table, 5 + i, OVERLAYERS, defaults[i] if i < len(defaults) else "None",
                                is_substrate=False)
@@ -560,8 +603,12 @@ tests/test_regression.py:
     Nm/Nox = 1.5 (Strohmeier quotes ~1.3-1.5 from gamma-Al2O3 densities).
   - Cu / Cu2O / CuO / Cu(OH)2: Biesinger, Surf. Interface Anal. 2017, 49,
     1325 (densities 8.96, 6.00, 6.31, 3.37 g/cm3; IMFPs 1.54, 1.77, 1.76,
-    2.19 nm). These IMFPs are for Cu LMM Auger electrons (KE ~918 eV); if
-    your areas come from Cu 2p3/2 (KE ~554 eV) use smaller 2p3/2 IMFPs.
+    2.19 nm). These IMFPs are for Cu LMM Auger electrons (KE ~918 eV), so
+    use the '(LMM)' presets with areas from the Cu LMM fit. Separate
+    '(2p3/2)' presets (IMFP 1.01 / 1.23 / 1.22 / 1.51 nm for Cu / Cu2O / CuO /
+    Cu(OH)2, KE ~554 eV with Al Ka) are COMPUTED here with TPP-2M, not
+    published values. Do not mix the two sets: thickness scales almost
+    linearly with the IMFPs, so the wrong set changes the answer by ~30%.
   - W / WO3: Carlson & McGuire, J. Electron Spectrosc. 1972/73, 1, 161
     (19.3 and 6.8 g/cm3, IMFP 1.28 and 2.63 nm, 45 deg take-off).
 

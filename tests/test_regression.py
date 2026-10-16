@@ -108,28 +108,52 @@ class CarlsonMcGuire1972Tungsten(unittest.TestCase):
 
 class Biesinger2017Copper(unittest.TestCase):
     def test_density_ratios_match_paper(self):
-        s = A.SUBSTRATES["Cu (metal)"]
+        s = A.SUBSTRATES["Cu (metal, LMM)"]
         n_m = A.volume_density(s.density_g_cm3, s.molar_mass_g_mol, 1)
         for key, ref in (("Cu2O", 1.68), ("CuO", 1.78), ("Cu(OH)2", 4.08)):
-            o = A.OVERLAYERS[key]
+            o = A.OVERLAYERS[key + " (LMM)"]
             n_o = A.volume_density(o.density_g_cm3, o.molar_mass_g_mol, o.atoms_per_formula)
             self.assertAlmostEqual(n_m / n_o, ref, delta=0.01, msg=key)
 
     def test_imfps_match_paper(self):
-        self.assertEqual(A.SUBSTRATES["Cu (metal)"].imfp_nm, 1.54)
+        self.assertEqual(A.SUBSTRATES["Cu (metal, LMM)"].imfp_nm, 1.54)
         for key, ref in (("Cu2O", 1.77), ("CuO", 1.76), ("Cu(OH)2", 2.19)):
-            self.assertEqual(A.OVERLAYERS[key].imfp_nm, ref, key)
+            self.assertEqual(A.OVERLAYERS[key + " (LMM)"].imfp_nm, ref, key)
 
     def test_worked_example_63_Cu2O_13_CuOH2_25_metal_is_about_3p2_nm(self):
-        sub = A.SUBSTRATES["Cu (metal)"]
+        sub = A.SUBSTRATES["Cu (metal, LMM)"]
         n_m = A.volume_density(sub.density_g_cm3, sub.molar_mass_g_mol, 1)
         comps = []
         for key, area in (("Cu2O", 63), ("Cu(OH)2", 13)):
-            o = A.OVERLAYERS[key]
+            o = A.OVERLAYERS[key + " (LMM)"]
             comps.append(A.OverlayerInput(key, A.volume_density(o.density_g_cm3, o.molar_mass_g_mol,
                                                                   o.atoms_per_formula), o.imfp_nm, 1.0, area))
         d = A.strohmeier_thickness(90, n_m, sub.imfp_nm, 1.0, 25, comps)["d_nm"]
         self.assertAlmostEqual(d, 3.2, delta=0.05)   # paper: "~3.2 nm"
+
+
+class CuTpp2mImfps(unittest.TestCase):
+    """The Cu 2p3/2 presets are computed (not published) with TPP-2M; Biesinger's 918 eV values validate the code."""
+    # name: (density, molar mass, Nv, band gap eV, Biesinger 918 eV IMFP nm or None)
+    CU = {"Cu2O": (6.00, 143.09, 28, 2.1, 1.77), "CuO": (6.31, 79.55, 17, 1.25, 1.76),
+          "Cu(OH)2": (3.37, 97.56, 25, 1.85, 2.19)}
+
+    def test_tpp2m_reproduces_biesinger_oxide_imfps_at_918_eV(self):
+        for name, (rho, m, nv, eg, ref) in self.CU.items():
+            self.assertAlmostEqual(A.tpp2m_imfp_nm(918, rho, m, nv, eg), ref, delta=0.01, msg=name)
+
+    def test_2p32_presets_match_tpp2m_at_554_eV(self):
+        for name, (rho, m, nv, eg, _) in self.CU.items():
+            self.assertAlmostEqual(A.OVERLAYERS[name + " (2p3/2)"].imfp_nm,
+                                   A.tpp2m_imfp_nm(554, rho, m, nv, eg), delta=0.005, msg=name)
+        self.assertAlmostEqual(A.SUBSTRATES["Cu (metal, 2p3/2)"].imfp_nm,
+                               A.tpp2m_imfp_nm(554, 8.96, 63.546, 11), delta=0.005)
+
+    def test_2p32_and_lmm_sets_share_densities(self):
+        for name in ("Cu2O", "CuO", "Cu(OH)2"):
+            a, b = A.OVERLAYERS[name + " (LMM)"], A.OVERLAYERS[name + " (2p3/2)"]
+            self.assertEqual((a.density_g_cm3, a.molar_mass_g_mol, a.atoms_per_formula),
+                             (b.density_g_cm3, b.molar_mass_g_mol, b.atoms_per_formula))
 
 
 class EquationProperties(unittest.TestCase):

@@ -51,8 +51,11 @@ to the published numbers:
 
 The Al preset also reproduces M. C. Biesinger's Al oxide/hydroxide spreadsheet to
 0.1 Å. The Cu IMFPs are for Cu LMM Auger electrons (KE ≈ 918 eV), as in the
-paper; if your areas come from Cu 2p3/2 use smaller 2p3/2 IMFPs. Si presets are
-still approximate defaults.
+paper, so use the `(LMM)` presets with Cu LMM areas. Separate `(2p3/2)` presets
+(IMFP 1.01 / 1.23 / 1.22 / 1.51 nm for Cu / Cu₂O / CuO / Cu(OH)₂ at KE ≈ 554 eV) are
+**computed** with TPP-2M (`tpp2m_imfp_nm()` in `app.py`), not published values; the same
+code reproduces Biesinger's oxide IMFPs at 918 eV to 0.2 %. Don't mix the two sets —
+thickness scales almost linearly with the IMFPs. Si presets are still approximate defaults.
 
 ## Tests
 
