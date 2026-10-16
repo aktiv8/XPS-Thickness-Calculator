@@ -12,7 +12,7 @@ Tkinter app (`app.py`; the thickness calculator is Python standard library only)
 python app.py                                                  # launch the Tk GUI (blocks until closed)
 python -c "import py_compile; py_compile.compile('app.py', doraise=True)"   # syntax check without opening a window
 python -m unittest discover -s tests -v                        # run all tests (no display; numpy tests skip if numpy is missing)
-pip install numpy matplotlib                                   # optional: enables the "Simulated spectrum" tab
+pip install numpy matplotlib                                   # optional: enables the "Simulated spectrum" pane
 python -m unittest tests.test_regression.BiesingerAlSpreadsheet   # a single test class
 ```
 
@@ -35,13 +35,19 @@ There is no linter or formatter. The calculation core is `strohmeier_thickness()
 - Deliberately NOT added: ZnS (no clean oxide route), diamond/graphite (no meaningful oxide overlayer), As₂O₃ for GaAs (no band gap/density from the user), CdO for CdTe (Cd 3d can't resolve it).
 - SiON is a rough placeholder, not sourced; the GUI makes all presets editable. Binding energies don't enter the thickness calculation, but they position the peaks in the simulated spectrum.
 
-## Simulated spectrum tab (`spectrum_sim.py`)
+## GUI layout (`app.py`)
 
-Optional (numpy + matplotlib; `app.py` guards the import and sets `HAVE_PLOT`, and without them the tab just shows an install hint). `spectrum_sim.py` is pure numpy with no Tk, so it is unit-tested directly (`tests/test_spectrum_sim.py`); `app.py` only holds the Tk/matplotlib glue (`_build_spectrum_tab`, `_refresh_spectrum`, `_draw_spectrum`, fed by `self.last_calc` which `_on_calculate` fills).
+One window, two notebook tabs ("Calculator & simulation", "Method / References"). The first tab is a vertical `ttk.PanedWindow`: top pane = Inputs card (left) + Calculation card (right: primary button, big readout, validity badge, details box, Clear/Export buttons); bottom pane = Simulated spectrum. Styling lives in `setup_style()` (the `clam` theme, palette constants at the top of the GUI section, `Primary.TButton`, `Card.*` styles) plus a small `Tooltip` class. The window is sized from the screen in `_initial_geometry()` (≤ 1500×980, 93% of the screen height) and `self.compact` (window height < 880) switches to smaller fonts, tighter rows, no header/hint, the angle entry folded onto the Substrate row, and the button + readout sharing a row. `_place_sash()` sets the divider to the top pane's natural height.
+
+Gotchas learned the hard way (all verified with screenshots, which is the only way to check this GUI): (1) bind the matplotlib canvas `<Configure>` with `add="+"` — a plain `bind` replaces matplotlib's own resize handler and the figure silently stops following the pane; (2) `NavigationToolbar2Tk` requests the full figure width, so `toolbar.configure(width=250)` is needed or it pushes everything sideways; (3) figure margins are computed in **pixels** from the live figure size and the figure is redrawn (debounced) on resize — fractional margins break on short panes; (4) a `ttk.Label` that wraps to its own width needs a small requested `width` or its unwrapped text squeezes its neighbours; (5) the Edit tool can't see Tk behaviour — drive the real window (`PIL.ImageGrab` of the window rect works on this machine) rather than guessing.
+
+## Simulated spectrum pane (`spectrum_sim.py`)
+
+Optional (numpy + matplotlib; `app.py` guards the import and sets `HAVE_PLOT`, and without them the pane just shows an install hint). `spectrum_sim.py` is pure numpy with no Tk, so it is unit-tested directly (`tests/test_spectrum_sim.py`); `app.py` only holds the Tk/matplotlib glue (`_build_spectrum_pane`, `_refresh_spectrum`, `_draw_spectrum`, fed by `self.last_calc` which `_on_calculate` fills).
 
 - It is an **estimate, not a fit**, and every figure says so (`DISCLAIMER`). `oxide_area_fractions()` is the forward form of the Strohmeier equation and reuses the `N_ov_avg` / `lam_ov_avg` / `rsf_ov_avg` that `strohmeier_thickness()` returns, so simulating at the calculated d reproduces the entered area ratio exactly (tested). Intensities are relative (areas normalised to 100%).
 - `CORE_LEVEL_MODEL` (spin-orbit splitting, branching ratio, default FWHM, Lorentzian mix) holds **typical literature values from general knowledge, not from the user's files**; FWHM is editable in the tab. The preset BE is taken as the lower-BE j-component (2p3/2, 3d5/2, 4f7/2) with the partner at +splitting. `model_for()` returns None for Auger presets (`Cu LMM`, `Zn LMM`), which are deliberately not simulated; a test enforces that every preset with a BE has a model and every Auger preset has none.
-- Not modelled: shake-up satellites (CuO, Cu(OH)₂), asymmetric metal tails, plasmon/loss features, Auger lines. Background is a self-consistent Shirley step (15% of peak height). The default window clips a little Lorentzian tail (≤ ~3% of area), which the tests allow for.
+- Not modelled: shake-up satellites (CuO, Cu(OH)₂), asymmetric metal tails, plasmon/loss features, Auger lines. **The figure must say so** (user requirement): `ignored_features()` returns the note printed under the plot and, for Cu 2p with CuO/Cu(OH)₂, a hatched "Cu(II) shake-up satellite region (not simulated)" band; `CoreLevelModel.ignored_note` holds the per-level text (Cu 2p quotes Biesinger's main/satellite ratios 1.89 CuO, 1.57 Cu(OH)₂ ⇒ satellites ≈ 35–39% of the Cu(II) area, so the drawn Cu(II) main peak is overstated). Note for thickness inputs: with Cu 2p3/2 the Cu(II) area should include the satellite. The band position (main + 5.5 … + 11.5 eV, i.e. ~939–946 eV) is an approximation consistent with the satellite components scattered through Biesinger's Table 4 text (~940–945 eV); that table's layout is scrambled in the PDF text and the PDF can't be rendered here, so exact satellite BEs/areas were not read. Background is a self-consistent Shirley step (15% of peak height). The default window clips a little Lorentzian tail (≤ ~3% of area), which the tests allow for.
 - A user spectrum is loaded as 2-column text/CSV (BE, intensity; headers skipped) and min–max scaled to the simulation height, so it is a shape comparison, not a quantitative overlay.
 
 ## Git

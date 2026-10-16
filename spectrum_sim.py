@@ -9,7 +9,8 @@ Known simplifications (also stated in the app and README):
   - splitting / branching ratio / FWHM values are typical literature defaults from general knowledge, not from
     the user's files; FWHM is editable in the app because it depends on the instrument and the chemistry
   - no shake-up satellites (e.g. CuO, Cu(OH)2), no asymmetric metal tails, no plasmon/loss features,
-    no Auger lines, relative intensities only
+    no Auger lines, relative intensities only. These omissions are stated ON the figure (`ignored_features`),
+    and for Cu(II) the missing satellite region is marked
   - the preset binding energy is taken as the lower-BE (j = l - 1/2) component of a doublet (2p3/2, 3d5/2, 4f7/2)
 
 Needs numpy only (no Tk, no matplotlib), so it is unit-testable on its own.
@@ -26,6 +27,19 @@ DISCLAIMER = "ESTIMATE - simulated from the calculated thickness, not a fit"
 _FWHM_TO_SIGMA = 1.0 / (2.0 * math.sqrt(2.0 * math.log(2.0)))
 
 
+GENERAL_IGNORED_NOTE = ("Not drawn, for simplicity: shake-up/shake-off satellites, plasmon/loss features, "
+                        "Auger lines and asymmetric metal tails.")
+
+CU2P_IGNORED_NOTE = ("Cu(II) shake-up satellites (CuO, Cu(OH)2) are NOT drawn - ignored for simplicity of the simulation. "
+                     "They carry roughly 35-39% of the Cu(II) 2p3/2 area (Biesinger 2017: main/satellite = 1.89 for CuO, "
+                     "1.57 for Cu(OH)2), so the drawn Cu(II) main peak is overstated. Also not drawn: plasmon/loss "
+                     "features, Auger lines and asymmetric metal tails.")
+
+# Cu(II) satellites sit roughly 5.5-11.5 eV above the Cu(II) main peak (Biesinger 2017 Table 4 lists the CuO and
+# Cu(OH)2 satellite components between ~940 and ~945 eV). Only used to shade the region that is not simulated.
+CU2_SATELLITE_OFFSET_EV = (5.5, 11.5)
+
+
 @dataclass(frozen=True)
 class CoreLevelModel:
     shell: str
@@ -34,6 +48,7 @@ class CoreLevelModel:
     fwhm_metal: float                  # eV, of one component of the doublet
     fwhm_compound: float
     lorentzian_mix: float = 0.3        # fraction of Lorentzian in the pseudo-Voigt
+    ignored_note: str = GENERAL_IGNORED_NOTE   # what the simulation leaves out, printed on the figure
 
 
 # Typical literature values (general knowledge, not from the user's files). Edit if you have better ones.
@@ -52,7 +67,7 @@ CORE_LEVEL_MODEL = {m.shell: m for m in (
     CoreLevelModel("Te 3d", 10.39, 1.5, 1.00, 1.40),
     CoreLevelModel("S 2p", 1.18, 2.0, 0.80, 1.30),
     # Cu 2p: the presets are Cu 2p3/2 only. Shake-up satellites of CuO / Cu(OH)2 are NOT modelled.
-    CoreLevelModel("Cu 2p", None, None, 0.90, 2.00),
+    CoreLevelModel("Cu 2p", None, None, 0.90, 2.00, ignored_note=CU2P_IGNORED_NOTE),
 )}
 
 _LEVEL_RE = re.compile(r"^\s*([A-Z][a-z]?)\s*(\d[spdf])")
@@ -141,17 +156,59 @@ class Simulation:
     total: np.ndarray
 
 
+@dataclass(frozen=True)
+class SatelliteRegion:
+    """A BE band where real spectra have satellite structure that this simulation does NOT draw."""
+    label: str
+    be_lo: float
+    be_hi: float
+
+
+def ignored_features(model: CoreLevelModel, components: Sequence[SimComponent],
+                     be_shift: float = 0.0) -> Tuple[str, List[SatelliteRegion]]:
+    """
+    What the simulation leaves out, for printing on the figure: (note text, satellite regions to shade).
+    Cu 2p with a Cu(II) component (CuO, Cu(OH)2) gets the specific shake-up note and one merged hatched region;
+    everything else gets the general note and no region.
+    """
+    regions: List[SatelliteRegion] = []
+    if model.shell == "Cu 2p":
+        cu2 = [c for c in components if re.match(r"^(CuO|Cu\(OH\)2)\b", c.label)]
+        if cu2:
+            lo = min(c.be_ev for c in cu2) + be_shift + CU2_SATELLITE_OFFSET_EV[0]
+            hi = max(c.be_ev for c in cu2) + be_shift + CU2_SATELLITE_OFFSET_EV[1]
+            regions.append(SatelliteRegion("Cu(II) shake-up satellite region (not simulated)", lo, hi))
+        else:
+            return GENERAL_IGNORED_NOTE, regions    # Cu(0)/Cu(I) only: no strong satellites to flag
+    return model.ignored_note, regions
+
+
+def default_window(model: CoreLevelModel, components: Sequence[SimComponent], fwhm_metal: Optional[float] = None,
+                   fwhm_compound: Optional[float] = None, be_shift: float = 0.0,
+                   margin: float = 4.0) -> Tuple[float, float]:
+    """BE window (lo, hi) that comfortably contains every component, its doublet partner and the peak tails."""
+    fw = max(fwhm_metal or model.fwhm_metal, fwhm_compound or model.fwhm_compound)
+    centres = [c.be_ev + be_shift for c in components]
+    return (min(centres) - margin - 2.0 * fw,
+            max(centres) + (model.splitting_ev or 0.0) + margin + 2.0 * fw)
+
+
 def simulate(model: CoreLevelModel, components: Sequence[SimComponent], fwhm_metal: Optional[float] = None,
              fwhm_compound: Optional[float] = None, be_shift: float = 0.0, step_fraction: float = 0.15,
-             base_fraction: float = 0.02, point_spacing: float = 0.02, margin: float = 4.0) -> Simulation:
-    """Relative-intensity spectrum with the peak areas normalised to 1 in total; height is a.u."""
+             base_fraction: float = 0.02, point_spacing: float = 0.02, margin: float = 4.0,
+             window: Optional[Tuple[float, float]] = None) -> Simulation:
+    """
+    Relative-intensity spectrum with the peak areas normalised to 1 in total; height is a.u.
+    `window=(lo, hi)` overrides the automatic BE window (e.g. to reach a satellite region).
+    """
     if not components:
         raise ValueError("No components to simulate.")
     fw = {"metal": fwhm_metal or model.fwhm_metal, "compound": fwhm_compound or model.fwhm_compound}
-    split = model.splitting_ev or 0.0
     centres = [c.be_ev + be_shift for c in components]
-    lo = min(centres) - margin - 2.0 * max(fw.values())
-    hi = max(centres) + split + margin + 2.0 * max(fw.values())
+    lo, hi = window if window is not None else default_window(model, components, fwhm_metal, fwhm_compound,
+                                                              be_shift, margin)
+    if hi <= lo:
+        raise ValueError("Window must have hi > lo.")
     n = int(round((hi - lo) / point_spacing)) + 1
     x = np.linspace(lo, hi, n)
 

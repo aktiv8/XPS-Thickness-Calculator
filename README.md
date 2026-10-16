@@ -10,7 +10,7 @@ https://subsite.harwellxps.uk/wp-content/uploads/2018/02/HarwellXPS_TechNote_01.
 
 The thickness calculator needs no third-party packages (only the Python
 standard library / Tkinter, which ships with standard Windows Python installs).
-The optional **Simulated spectrum** tab needs numpy and matplotlib:
+The optional **Simulated spectrum** pane needs numpy and matplotlib:
 
 ```bash
 pip install numpy matplotlib   # optional
@@ -36,16 +36,25 @@ python app.py
 - Flags whether the result is within the method's validity limit
   (~3x the overlayer IMFP).
 - Results can be exported to CSV via **Export history to CSV...**.
-- **Simulated spectrum (estimate)** tab: after a calculation it draws what that
+- **One window:** inputs on the left, the calculation (big blue
+  **Calculate thickness** button, a large thickness readout and a green/amber/red
+  validity badge) on the right, and the simulated spectrum underneath. Drag the
+  divider between them to trade height. On short screens (laptops) it switches
+  to a compact layout; pressing Enter in any input box also calculates.
+- **Simulated spectrum (estimate)** pane: after a calculation it draws what that
   thickness would look like for the substrate and oxide core-level peaks
   (spin-orbit doublets, Shirley-type background) next to a to-scale layer
   diagram, clearly labelled as an estimate. Use **Load my spectrum...**
   (2-column text/CSV of binding energy, intensity) to overlay your own data,
   the thickness box/slider for what-if values, the BE shift for charge
   correction and the FWHM boxes to match your resolution. The figure can be
-  saved as PNG from its toolbar. Peak splitting/FWHM are typical defaults;
-  shake-up satellites, asymmetric metal tails and Auger lines (e.g. the Cu LMM
-  presets) are not modelled.
+  saved as PNG from its toolbar. Peak splitting/FWHM are typical defaults.
+- **What the simulation leaves out is stated on the figure:** for simplicity it
+  does not draw shake-up satellites, plasmon/loss features, Auger lines or
+  asymmetric metal tails. For Cu 2p3/2 with CuO or Cu(OH)₂ the Cu(II) shake-up
+  satellite region is shaded and labelled "not simulated" (the satellites carry
+  roughly 35–39 % of the Cu(II) area, so the drawn Cu(II) main peak is
+  overstated). Auger presets (e.g. Cu LMM) are not simulated.
 
 See the **Method / References** tab inside the app for the full equations,
 derivation notes, and important caveats about the reference density/IMFP

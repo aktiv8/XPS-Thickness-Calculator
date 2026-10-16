@@ -184,6 +184,67 @@ class ModelLookup(unittest.TestCase):
 
 
 @unittest.skipUnless(HAVE_NUMPY, "numpy not installed")
+class IgnoredFeatures(unittest.TestCase):
+    def _cu(self, *labels_bes):
+        return [S.SimComponent(l, be, 0.2, "metal" if l.startswith("Cu (") else "compound") for l, be in labels_bes]
+
+    def test_every_model_has_a_non_empty_ignored_note(self):
+        for m in S.CORE_LEVEL_MODEL.values():
+            self.assertTrue(m.ignored_note.strip(), m.shell)
+            self.assertIn("for simplicity", m.ignored_note, m.shell)
+
+    def test_cu_ii_gets_the_specific_note_and_a_shaded_region(self):
+        model = S.model_for("Cu 2p3/2")
+        comps = self._cu(("Cu (metal)", 932.63), ("CuO (2p3/2)", 933.76), ("Cu(OH)2 (2p3/2)", 934.67))
+        note, regions = S.ignored_features(model, comps)
+        self.assertIn("ignored for simplicity", note)
+        self.assertIn("Cu(II) shake-up satellites", note)
+        self.assertEqual(len(regions), 1)
+        self.assertIn("not simulated", regions[0].label)
+        # one merged band: from CuO main + 5.5 eV to Cu(OH)2 main + 11.5 eV
+        self.assertAlmostEqual(regions[0].be_lo, 933.76 + 5.5, places=6)
+        self.assertAlmostEqual(regions[0].be_hi, 934.67 + 11.5, places=6)
+
+    def test_region_follows_the_be_shift(self):
+        model = S.model_for("Cu 2p3/2")
+        comps = self._cu(("CuO (2p3/2)", 933.76))
+        _, base = S.ignored_features(model, comps)
+        _, shifted = S.ignored_features(model, comps, be_shift=-1.0)
+        self.assertAlmostEqual(shifted[0].be_lo, base[0].be_lo - 1.0, places=9)
+
+    def test_cu_without_cu_ii_gets_the_general_note_and_no_region(self):
+        model = S.model_for("Cu 2p3/2")
+        note, regions = S.ignored_features(model, self._cu(("Cu (metal)", 932.63), ("Cu2O (2p3/2)", 932.18)))
+        self.assertEqual(note, S.GENERAL_IGNORED_NOTE)
+        self.assertEqual(regions, [])
+
+    def test_other_levels_get_the_general_note_and_no_region(self):
+        for core in ("Al 2p", "Si 2p3/2", "W 4f7/2", "Ti 2p3/2"):
+            note, regions = S.ignored_features(S.model_for(core), [S.SimComponent("X", 50.0, 1.0, "metal")])
+            self.assertEqual(note, S.GENERAL_IGNORED_NOTE, core)
+            self.assertEqual(regions, [], core)
+
+    def test_window_override_is_honoured(self):
+        model = S.model_for("Cu 2p3/2")
+        comps = [S.SimComponent("CuO (2p3/2)", 933.76, 1.0, "compound")]
+        auto = S.simulate(model, comps)
+        wide = S.simulate(model, comps, window=(925.0, 950.0))
+        self.assertAlmostEqual(wide.be[0], 925.0, places=9)
+        self.assertAlmostEqual(wide.be[-1], 950.0, places=9)
+        self.assertLess(auto.be[-1], 950.0)
+        with self.assertRaises(ValueError):
+            S.simulate(model, comps, window=(950.0, 925.0))
+
+    def test_default_window_matches_simulate(self):
+        model = S.model_for("Al 2p")
+        comps = [S.SimComponent("Al", 72.9, 0.4, "metal"), S.SimComponent("Al2O3", 74.4, 0.6, "compound")]
+        lo, hi = S.default_window(model, comps)
+        sim = S.simulate(model, comps)
+        self.assertAlmostEqual(sim.be[0], lo, places=9)
+        self.assertAlmostEqual(sim.be[-1], hi, places=9)
+
+
+@unittest.skipUnless(HAVE_NUMPY, "numpy not installed")
 class LoadSpectrum(unittest.TestCase):
     def _load(self, text):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:

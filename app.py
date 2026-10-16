@@ -42,7 +42,7 @@ reference measurements) for your specific instrument, X-ray source and
 material phase (amorphous vs. crystalline density strongly affects results).
 
 The thickness calculator needs no third-party packages (standard library + tkinter only). The optional
-"Simulated spectrum" tab (see spectrum_sim.py) needs numpy and matplotlib; without them it shows an install hint.
+"Simulated spectrum" pane (see spectrum_sim.py) needs numpy and matplotlib; without them it shows an install hint.
 """
 
 import csv
@@ -53,8 +53,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 from tkinter import ttk, messagebox, filedialog
 import os
+import textwrap
 
-# Optional: the simulated-spectrum tab needs numpy + matplotlib. The thickness calculator itself does not.
+# Optional: the simulated-spectrum pane needs numpy + matplotlib. The thickness calculator itself does not.
 try:
     import numpy as np  # noqa: F401  (used by spectrum_sim and the plotting code below)
     import matplotlib
@@ -570,7 +571,128 @@ def strohmeier_thickness(theta_deg: float, N_sub: float, lam_sub: float, rsf_sub
 
 N_OVERLAYER_ROWS = 4
 
-FIELD_WIDTH = 9
+FIELD_WIDTH = 8
+
+# Palette (one place, so the look is easy to tweak)
+BG = "#eef1f5"
+CARD = "#ffffff"
+INK = "#1f2937"
+MUTED = "#6b7280"
+ACCENT = "#1f6feb"
+ACCENT_HOVER = "#1a5fd0"
+ACCENT_PRESSED = "#174fb0"
+BORDER = "#8d96a3"
+BTN = "#e5e7eb"
+BTN_HOVER = "#d6dbe2"
+BTN_PRESSED = "#c3cad3"
+BADGE = {   # kind -> (background, foreground)
+    "idle": ("#e5e7eb", "#4b5563"),
+    "ok": ("#d1fae5", "#065f46"),
+    "warn": ("#fef3c7", "#92400e"),
+    "bad": ("#fee2e2", "#991b1b"),
+}
+
+
+def setup_style(root, compact=False):
+    """Switch to the 'clam' theme and define the button/card/entry styles used by the app."""
+    style = ttk.Style(root)
+    try:
+        style.theme_use("clam")
+    except tk.TclError:
+        pass
+    base = 8 if compact else 9
+    font = ("Segoe UI", base)
+    root.configure(bg=BG)
+
+    style.configure(".", background=BG, foreground=INK, font=font, bordercolor=BORDER, focuscolor=ACCENT)
+    style.configure("TFrame", background=BG)
+    style.configure("Card.TFrame", background=CARD)
+    style.configure("TLabel", background=BG, foreground=INK)
+    style.configure("Card.TLabel", background=CARD, foreground=INK)
+    style.configure("Muted.TLabel", background=BG, foreground=MUTED)
+    style.configure("CardMuted.TLabel", background=CARD, foreground=MUTED)
+    style.configure("Header.TLabel", background=BG, foreground=INK, font=("Segoe UI", base + 4, "bold"))
+    style.configure("ColHead.TLabel", background=CARD, foreground=MUTED, font=("Segoe UI", base - 1, "bold"))
+    style.configure("RowHead.TLabel", background=CARD, foreground=INK, font=("Segoe UI", base, "bold"))
+    style.configure("Card.TCheckbutton", background=CARD, foreground=INK)
+    style.map("Card.TCheckbutton", background=[("active", CARD)])
+
+    style.configure("Card.TLabelframe", background=CARD, bordercolor=BORDER, relief="solid", borderwidth=1)
+    style.configure("Card.TLabelframe.Label", background=CARD, foreground=ACCENT, font=("Segoe UI", base + 1, "bold"))
+    style.configure("TSeparator", background="#d1d5db")
+
+    # Buttons: a clearly bordered, raised secondary style and a bold blue primary style, with hover/pressed states.
+    style.configure("TButton", background=BTN, foreground=INK, bordercolor=BORDER, lightcolor="#ffffff",
+                    darkcolor="#c1c7cf", relief="raised", borderwidth=1, padding=(10, 5), focuscolor=BTN, font=font)
+    style.map("TButton",
+              background=[("disabled", "#f3f4f6"), ("pressed", BTN_PRESSED), ("active", BTN_HOVER)],
+              foreground=[("disabled", "#9ca3af")],
+              relief=[("pressed", "sunken"), ("!pressed", "raised")])
+    style.configure("Primary.TButton", background=ACCENT, foreground="#ffffff", bordercolor=ACCENT_PRESSED,
+                    lightcolor="#4a8df0", darkcolor=ACCENT_PRESSED, relief="raised", borderwidth=1,
+                    padding=(18, 9), focuscolor=ACCENT, font=("Segoe UI", base + 2, "bold"))
+    style.map("Primary.TButton",
+              background=[("disabled", "#9db9e8"), ("pressed", ACCENT_PRESSED), ("active", ACCENT_HOVER)],
+              foreground=[("disabled", "#ffffff")],
+              relief=[("pressed", "sunken"), ("!pressed", "raised")])
+
+    # Input fields
+    style.configure("TEntry", fieldbackground="#ffffff", bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER,
+                    padding=3)
+    style.map("TEntry", bordercolor=[("focus", ACCENT)], lightcolor=[("focus", ACCENT)],
+              darkcolor=[("focus", ACCENT)])
+    style.configure("TCombobox", fieldbackground="#ffffff", bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER,
+                    arrowcolor=INK, padding=3)
+    style.map("TCombobox", fieldbackground=[("readonly", "#ffffff")], selectbackground=[("readonly", "#ffffff")],
+              selectforeground=[("readonly", INK)], bordercolor=[("focus", ACCENT)])
+
+    style.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(2, 4, 2, 0))
+    style.configure("TNotebook.Tab", background="#dfe4ea", foreground=MUTED, padding=(18, 7),
+                    font=("Segoe UI", base + 1, "bold"))
+    style.map("TNotebook.Tab", background=[("selected", CARD), ("active", "#e9edf2")],
+              foreground=[("selected", ACCENT)], padding=[("selected", (18, 9))])
+
+    style.configure("Horizontal.TScale", background=CARD, troughcolor="#d1d5db")
+    style.configure("TPanedwindow", background=BG)
+    style.configure("Sash", sashthickness=10, gripcount=16, handlesize=14)
+
+
+class Tooltip:
+    """Small hover tooltip: appears after a short delay, disappears on leave/click."""
+
+    def __init__(self, widget, text, delay=450):
+        self.widget, self.text, self.delay = widget, text, delay
+        self._tip = None
+        self._after = None
+        widget.bind("<Enter>", self._schedule, add="+")
+        widget.bind("<Leave>", self._hide, add="+")
+        widget.bind("<ButtonPress>", self._hide, add="+")
+
+    def _schedule(self, _event=None):
+        self._cancel()
+        self._after = self.widget.after(self.delay, self._show)
+
+    def _cancel(self):
+        if self._after is not None:
+            self.widget.after_cancel(self._after)
+            self._after = None
+
+    def _show(self):
+        if self._tip is not None or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 12
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+        self._tip = tk.Toplevel(self.widget)
+        self._tip.wm_overrideredirect(True)
+        self._tip.wm_geometry(f"+{x}+{y}")
+        tk.Label(self._tip, text=self.text, justify="left", background="#111827", foreground="#ffffff",
+                 padx=8, pady=4, font=("Segoe UI", 8), wraplength=320).pack()
+
+    def _hide(self, _event=None):
+        self._cancel()
+        if self._tip is not None:
+            self._tip.destroy()
+            self._tip = None
 
 
 def _to_float(text):
@@ -584,20 +706,21 @@ def _to_float(text):
 class CompoundRow:
     """One editable row (substrate or overlayer) bound to a Compound preset dropdown."""
 
-    def __init__(self, parent, row_idx, choices, default_key, is_substrate=False):
+    def __init__(self, parent, row_idx, choices, default_key, is_substrate=False, pady=2):
         self.is_substrate = is_substrate
         self.active_var = tk.BooleanVar(value=is_substrate)  # substrate always active
         self.choice_var = tk.StringVar(value=default_key)
 
         c = 0
         if not is_substrate:
-            self.active_chk = ttk.Checkbutton(parent, variable=self.active_var)
-            self.active_chk.grid(row=row_idx, column=c, padx=2)
+            self.active_chk = ttk.Checkbutton(parent, variable=self.active_var, style="Card.TCheckbutton")
+            self.active_chk.grid(row=row_idx, column=c, padx=(2, 4), pady=pady)
+            Tooltip(self.active_chk, "Tick to include this component in the (mixed) overlayer")
         c += 1
 
         self.combo = ttk.Combobox(parent, textvariable=self.choice_var, values=list(choices.keys()),
-                                   width=22, state="readonly")
-        self.combo.grid(row=row_idx, column=c, padx=2, sticky="w")
+                                   width=21, state="readonly")
+        self.combo.grid(row=row_idx, column=c, padx=2, pady=pady, sticky="w")
         c += 1
 
         self.density_var = tk.StringVar()
@@ -606,23 +729,23 @@ class CompoundRow:
         self.be_var = tk.StringVar()
         self.core_var = tk.StringVar()
         self.imfp_var = tk.StringVar()
-        self.rsf_var = tk.StringVar(value="1.0")
+        self.rsf_var = tk.StringVar(value="1")
         self.area_var = tk.StringVar()
 
         entries = [
             (self.density_var, FIELD_WIDTH),
             (self.molar_var, FIELD_WIDTH),
-            (self.atoms_var, 6),
-            (self.core_var, 10),
-            (self.be_var, 8),
-            (self.imfp_var, FIELD_WIDTH),
-            (self.rsf_var, 6),
+            (self.atoms_var, 5),
+            (self.core_var, 9),
+            (self.be_var, 7),
+            (self.imfp_var, 7),
+            (self.rsf_var, 5),
             (self.area_var, FIELD_WIDTH),
         ]
         self.entry_widgets = []
         for var, width in entries:
             w = ttk.Entry(parent, textvariable=var, width=width)
-            w.grid(row=row_idx, column=c, padx=2)
+            w.grid(row=row_idx, column=c, padx=2, pady=pady)
             self.entry_widgets.append(w)
             c += 1
 
@@ -668,84 +791,182 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("XPS Overlayer Thickness Calculator (Strohmeier method)")
-        self.geometry("1180x760")
-        self.minsize(1040, 640)
+        width, height = self._initial_geometry()
+        self.compact = height < 880       # laptops: smaller fonts, tighter rows, no hint paragraph
+        setup_style(self, compact=self.compact)
+        x = max(0, (self.winfo_screenwidth() - width) // 2)
+        y = max(0, (self.winfo_screenheight() - height) // 2 - 20)
+        self.geometry(f"{width}x{height}+{x}+{y}")
+        self.minsize(min(1100, width), min(680, height))
 
         nb = ttk.Notebook(self)
         nb.pack(fill="both", expand=True, padx=8, pady=8)
 
         self.calc_tab = ttk.Frame(nb)
-        self.spec_tab = ttk.Frame(nb)
         self.help_tab = ttk.Frame(nb)
-        nb.add(self.calc_tab, text="Calculator")
-        nb.add(self.spec_tab, text="Simulated spectrum (estimate)")
+        nb.add(self.calc_tab, text="Calculator & simulation")
         nb.add(self.help_tab, text="Method / References")
 
         self.history = []  # list of dict rows for CSV export
-        self.last_calc = None   # inputs + result of the last successful calculation (feeds the spectrum tab)
+        self.last_calc = None   # inputs + result of the last successful calculation (feeds the spectrum pane)
         self.sim_data = None    # (x, y, name) of a user-loaded spectrum
 
         self._build_calc_tab()
-        self._build_spectrum_tab()
         self._build_help_tab()
+        self.after(150, self._place_sash)
+
+    def _initial_geometry(self):
+        """Window size from the detected screen: up to 1500 x 980, otherwise ~95% of the screen."""
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        return min(int(sw * 0.95), 1500), min(int(sh * 0.93), 980)
+
+    def _place_sash(self):
+        """Give the top pane exactly the height its widgets need (capped), the rest goes to the spectrum."""
+        try:
+            self.update_idletasks()
+            wanted = self.top_pane.winfo_reqheight() + 6
+            cap = int(self.paned.winfo_height() * (0.50 if self.compact else 0.58))
+            self.paned.sashpos(0, max(160, min(wanted, cap)))
+        except tk.TclError:
+            pass
 
     # ------------------------------------------------------------------
     def _build_calc_tab(self):
-        top = ttk.Frame(self.calc_tab)
-        top.pack(fill="x", padx=6, pady=(6, 0))
+        if not self.compact:      # on short screens the window title already names the app; keep the height for the plot
+            header = ttk.Frame(self.calc_tab)
+            header.pack(fill="x", padx=10, pady=(8, 2))
+            ttk.Label(header, text="Overlayer thickness from XPS peak areas", style="Header.TLabel").pack(side="left")
+            ttk.Label(header, text="Strohmeier equation (1990)", style="Muted.TLabel").pack(side="left", padx=14,
+                                                                                               pady=(6, 0))
 
-        ttk.Label(
-            top,
-            text="Uniform-overlayer thickness from XPS peak areas (Strohmeier, 1990 / HarwellXPS Tech Note #1)",
-            font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
-        ttk.Label(
-            top,
-            text="Fill in / edit the substrate row and up to 4 overlayer rows (tick 'active' to include a "
-                 "component in a mixed layer, e.g. oxide + hydroxide). Densities, molar masses, binding "
-                 "energies and IMFPs are pre-filled reference defaults - verify/edit for your material and instrument.",
-            wraplength=1100, justify="left",
-        ).pack(anchor="w", pady=(2, 8))
+        self.paned = ttk.PanedWindow(self.calc_tab, orient="vertical")
+        self.paned.pack(fill="both", expand=True, padx=8, pady=(4, 8))
+        self.top_pane = ttk.Frame(self.paned)
+        self.bottom_pane = ttk.Frame(self.paned)
+        self.paned.add(self.top_pane, weight=0)
+        self.paned.add(self.bottom_pane, weight=1)
 
-        angle_frame = ttk.Frame(self.calc_tab)
-        angle_frame.pack(fill="x", padx=6)
-        ttk.Label(angle_frame, text="Photoelectron take-off angle theta (deg from surface, 90 = normal emission):").pack(side="left")
+        self.top_pane.columnconfigure(0, weight=3, minsize=760)
+        self.top_pane.columnconfigure(1, weight=2, minsize=380)
+        self.top_pane.rowconfigure(0, weight=1)
+        self._build_inputs_card(self.top_pane).grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=(0, 4))
+        self._build_results_card(self.top_pane).grid(row=0, column=1, sticky="nsew", pady=(0, 4))
+        self._build_spectrum_pane(self.bottom_pane)
+
+    # --- inputs (left) -------------------------------------------------
+    def _build_inputs_card(self, parent):
+        card = ttk.LabelFrame(parent, text="  Inputs  ", style="Card.TLabelframe", padding=(10, 4, 10, 8))
+
+        card.columnconfigure(0, weight=1)
+        pady = 1 if self.compact else 2
+        if not self.compact:
+            hint = ttk.Label(card, style="CardMuted.TLabel", justify="left",
+                             text="Tick the overlayer component(s) present (e.g. oxide + hydroxide), enter their fitted "
+                                  "peak areas, then Calculate. Every preset value is editable - verify them for your "
+                                  "material and instrument.")
+            hint.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+            hint.bind("<Configure>", lambda e: hint.configure(wraplength=max(200, e.width - 4)))
+
+        table = ttk.Frame(card, style="Card.TFrame")
+        table.grid(row=2, column=0, sticky="w")
+
+        angle = ttk.Frame(table if self.compact else card, style="Card.TFrame")
+        if self.compact:    # fold the angle into the Substrate row: it saves a whole row of height on short screens
+            angle.grid(row=1, column=2, columnspan=8, sticky="e", pady=(4, 0))
+        else:
+            angle.grid(row=1, column=0, sticky="w", pady=(0, 6))
+        ttk.Label(angle, style="Card.TLabel",
+                  text=("Take-off angle θ (deg from surface; 90 = normal):" if self.compact
+                        else "Take-off angle θ (deg from the surface; 90 = normal emission):")).pack(side="left")
         self.theta_var = tk.StringVar(value="90")
-        ttk.Entry(angle_frame, textvariable=self.theta_var, width=8).pack(side="left", padx=6)
+        theta_entry = ttk.Entry(angle, textvariable=self.theta_var, width=6)
+        theta_entry.pack(side="left", padx=6)
+        theta_entry.bind("<Return>", lambda e: self._on_calculate())
 
-        table = ttk.Frame(self.calc_tab)
-        table.pack(fill="x", padx=6, pady=8)
+        headers =["", "Compound", "Density\n(g/cm³)", "Molar mass\n(g/mol)", "Atoms/\nformula",
+                   "Core level", "BE\n(eV)", "IMFP\n(nm)", "RSF", "Peak area\n(I)"]
+        for i, h in enumerate(headers):
+            ttk.Label(table, text=h, style="ColHead.TLabel", justify="center").grid(row=0, column=i, padx=2)
 
-        headers_sub = ["", "Compound", "Density\n(g/cm3)", "Molar mass\n(g/mol)", "Atoms/\nformula",
-                       "Core level", "BE\n(eV)", "IMFP\n(nm)", "RSF", "Peak area\n(I)"]
-        # substrate has no "active" checkbox column content but keep alignment
-        for i, h in enumerate(headers_sub):
-            ttk.Label(table, text=h, font=("Segoe UI", 8, "bold"), justify="center").grid(row=0, column=i, padx=2)
+        ttk.Label(table, text="Substrate", style="RowHead.TLabel").grid(row=1, column=0, columnspan=2, sticky="w",
+                                                                         pady=(4, 0))
+        self.substrate_row = CompoundRow(table, 2, SUBSTRATES, "Cu (metal, LMM)", is_substrate=True, pady=pady)
 
-        ttk.Label(table, text="Substrate", font=("Segoe UI", 9, "bold")).grid(row=1, column=0, sticky="w")
-        self.substrate_row = CompoundRow(table, 2, SUBSTRATES, "Cu (metal, LMM)", is_substrate=True)
-
-        ttk.Separator(table, orient="horizontal").grid(row=3, column=0, columnspan=10, sticky="ew", pady=6)
-        ttk.Label(table, text="Overlayer component(s)", font=("Segoe UI", 9, "bold")).grid(row=4, column=0, columnspan=3, sticky="w")
+        if not self.compact:
+            ttk.Separator(table, orient="horizontal").grid(row=3, column=0, columnspan=10, sticky="ew", pady=6)
+        ttk.Label(table, text="Overlayer component(s)  (tick to include)", style="RowHead.TLabel").grid(
+            row=4, column=0, columnspan=6, sticky="w", pady=(4, 0) if self.compact else 0)
 
         self.overlayer_rows = []
         defaults = ["CuO (LMM)", "Cu2O (LMM)", "Cu(OH)2 (LMM)", "None"]
         for i in range(N_OVERLAYER_ROWS):
             row = CompoundRow(table, 5 + i, OVERLAYERS, defaults[i] if i < len(defaults) else "None",
-                               is_substrate=False)
+                               is_substrate=False, pady=pady)
             self.overlayer_rows.append(row)
 
-        btn_frame = ttk.Frame(self.calc_tab)
-        btn_frame.pack(fill="x", padx=6, pady=(4, 4))
-        ttk.Button(btn_frame, text="Calculate thickness", command=self._on_calculate).pack(side="left")
-        ttk.Button(btn_frame, text="Export history to CSV...", command=self._export_csv).pack(side="left", padx=8)
-        ttk.Button(btn_frame, text="Clear peak areas", command=self._clear_areas).pack(side="left")
+        for row in [self.substrate_row] + self.overlayer_rows:
+            for w in row.entry_widgets:
+                w.bind("<Return>", lambda e: self._on_calculate())
+        return card
 
-        result_frame = ttk.LabelFrame(self.calc_tab, text="Result")
-        result_frame.pack(fill="both", expand=True, padx=6, pady=6)
-        self.result_text = tk.Text(result_frame, height=10, wrap="word", state="disabled",
-                                    font=("Consolas", 10))
-        self.result_text.pack(fill="both", expand=True, padx=4, pady=4)
+    # --- calculation (right) ---------------------------------------------
+    def _build_results_card(self, parent):
+        card = ttk.LabelFrame(parent, text="  Calculation  ", style="Card.TLabelframe", padding=10)
+        card.columnconfigure(0, weight=1)
+        card.rowconfigure(3, weight=1)
+
+        self.calc_btn = ttk.Button(card, text="Calculate thickness", style="Primary.TButton",
+                                   command=self._on_calculate)
+        Tooltip(self.calc_btn, "Calculate the overlayer thickness from the peak areas entered on the left "
+                               "(pressing Enter in any input box does the same)")
+
+        readout = ttk.Frame(card, style="Card.TFrame")
+        if self.compact:    # button and readout share a row to save height on short screens
+            self.calc_btn.grid(row=0, column=0, sticky="ew")
+            readout.grid(row=0, column=1, sticky="e", padx=(12, 0))
+        else:
+            self.calc_btn.grid(row=0, column=0, columnspan=2, sticky="ew")
+            readout.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.readout_var = tk.StringVar(value="-.-- nm")
+        self.readout_sub_var = tk.StringVar(value="Overlayer thickness will appear here")
+        self.readout_lbl = tk.Label(readout, textvariable=self.readout_var,
+                                    font=("Segoe UI", 30 if not self.compact else 24, "bold"), fg="#b8bec7", bg=CARD,
+                                    anchor="w")
+        self.readout_lbl.pack(anchor="w")
+        tk.Label(readout, textvariable=self.readout_sub_var, font=("Segoe UI", 9), fg=MUTED, bg=CARD,
+                 anchor="w").pack(anchor="w")
+
+        self.badge = tk.Label(card, text="No calculation yet", font=("Segoe UI", 9, "bold"), padx=8, pady=4,
+                              anchor="w", justify="left", wraplength=360)
+        self.badge.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 6) if self.compact else (8, 8))
+        self._set_badge("idle", "No calculation yet")
+
+        text_frame = ttk.Frame(card, style="Card.TFrame")
+        text_frame.grid(row=3, column=0, columnspan=2, sticky="nsew")
+        text_frame.columnconfigure(0, weight=1)
+        text_frame.rowconfigure(0, weight=1)
+        self.result_text = tk.Text(text_frame, height=5, width=44, wrap="word", state="disabled",
+                                   font=("Consolas", 9 if not self.compact else 8), relief="flat", bg="#f8fafc",
+                                   highlightthickness=1, highlightbackground="#d1d5db", padx=6, pady=4)
+        scroll = ttk.Scrollbar(text_frame, orient="vertical", command=self.result_text.yview)
+        self.result_text.configure(yscrollcommand=scroll.set)
+        self.result_text.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
+
+        buttons = ttk.Frame(card, style="Card.TFrame")
+        buttons.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(6, 0) if self.compact else (8, 0))
+        buttons.columnconfigure((0, 1), weight=1, uniform="b")
+        clear_btn = ttk.Button(buttons, text="Clear peak areas", command=self._clear_areas)
+        clear_btn.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        export_btn = ttk.Button(buttons, text="Export history to CSV...", command=self._export_csv)
+        export_btn.grid(row=0, column=1, sticky="ew", padx=(4, 0))
+        Tooltip(clear_btn, "Empty all the peak-area boxes (the presets stay)")
+        Tooltip(export_btn, "Save every calculation from this session to a CSV file")
+        return card
+
+    def _set_badge(self, kind, text):
+        bg, fg = BADGE[kind]
+        self.badge.configure(text=text, bg=bg, fg=fg)
 
     def _clear_areas(self):
         self.substrate_row.area_var.set("")
@@ -758,7 +979,7 @@ class App(tk.Tk):
             sub_label, N_sub, lam_sub, rsf_sub, I_sub = self.substrate_row.read()
 
             components = []
-            comp_meta = []   # (binding energy text, core level text) per component, for the spectrum tab
+            comp_meta = []   # (binding energy text, core level text) per component, for the spectrum pane
             for row in self.overlayer_rows:
                 if not row.active_var.get() or row.choice_var.get() == "None":
                     continue
@@ -780,28 +1001,37 @@ class App(tk.Tk):
             return
 
         comp_names = ", ".join(f"{c.label} (I={c.area:g})" for c in components)
-        lines = []
-        lines.append(f"Substrate: {sub_label}   N_sub = {N_sub:.5f}   lambda_sub = {lam_sub:g} nm   I_sub = {I_sub:g}")
-        lines.append(f"Overlayer component(s): {comp_names}")
-        lines.append(f"Take-off angle theta = {theta:g} deg")
-        lines.append("-" * 70)
-        lines.append(f"Intensity-weighted N_overlayer  = {res['N_ov_avg']:.5f}")
-        lines.append(f"Intensity-weighted lambda_overlayer = {res['lam_ov_avg']:.4f} nm")
-        lines.append(f"N_sub / N_overlayer ratio        = {res['N_ratio_sub_over_ov']:.4f}")
-        lines.append("")
-        lines.append(f"==> Overlayer thickness d = {res['d_nm']:.3f} nm  ({res['d_angstrom']:.2f} Angstrom)")
-        lines.append("")
         limit_txt = "within" if res["within_validity"] else "EXCEEDS"
-        lines.append(f"Validity check: method is reliable to ~3x lambda_overlayer = "
-                     f"{res['validity_limit_nm']:.2f} nm. Calculated thickness is {limit_txt} this limit.")
+        lines = []      # the result comes first: the box is small and the inputs are visible on the left anyway
+        lines.append(f"==> Overlayer thickness d = {res['d_nm']:.3f} nm  ({res['d_angstrom']:.2f} Angstrom)")
+        lines.append(f"Validity: reliable to ~3x lambda_ov = {res['validity_limit_nm']:.2f} nm; "
+                     f"d is {limit_txt} this limit.")
         if not res["within_validity"]:
-            lines.append("  -> Result may be unreliable; consider angle-resolved XPS, sputter-depth "
-                         "profiling, or an alternative technique (ellipsometry, TEM) for thicker films.")
+            lines.append("  -> May be unreliable; consider angle-resolved XPS, depth profiling, ellipsometry or TEM.")
+        lines.append("-" * 44)
+        lines.append(f"Substrate : {sub_label}")
+        lines.append(f"  N_sub = {N_sub:.5f}  lambda = {lam_sub:g} nm  I = {I_sub:g}")
+        lines.append(f"Overlayer : {comp_names}")
+        lines.append(f"  N_ov (weighted)      = {res['N_ov_avg']:.5f}")
+        lines.append(f"  lambda_ov (weighted) = {res['lam_ov_avg']:.4f} nm")
+        lines.append(f"  N_sub / N_ov         = {res['N_ratio_sub_over_ov']:.4f}")
+        lines.append(f"Take-off angle theta = {theta:g} deg")
 
         self.result_text.configure(state="normal")
         self.result_text.delete("1.0", "end")
         self.result_text.insert("1.0", "\n".join(lines))
         self.result_text.configure(state="disabled")
+
+        limit = res["validity_limit_nm"]
+        self.readout_var.set(f"{res['d_nm']:.2f} nm")
+        self.readout_lbl.configure(fg=ACCENT)
+        self.readout_sub_var.set(f"{res['d_angstrom']:.1f} Å     (θ = {theta:g}°)")
+        if res["d_nm"] > limit:
+            self._set_badge("bad", f"Exceeds the ~3λ limit ({limit:.1f} nm): result may be unreliable")
+        elif res["d_nm"] > 0.8 * limit:
+            self._set_badge("warn", f"Close to the ~3λ limit ({limit:.1f} nm): treat with caution")
+        else:
+            self._set_badge("ok", f"Within the validity limit (~3λ = {limit:.1f} nm)")
 
         self.history.append({
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -840,61 +1070,103 @@ class App(tk.Tk):
         messagebox.showinfo("Exported", f"Saved {len(self.history)} result(s) to:\n{path}")
 
     # ------------------------------------------------------------------
-    # Simulated spectrum tab (needs numpy + matplotlib)
+    # Simulated spectrum pane (needs numpy + matplotlib)
     # ------------------------------------------------------------------
     OXIDE_COLOURS = ["#d62728", "#ff7f0e", "#2ca02c", "#9467bd"]
     METAL_COLOUR = "#1f77b4"
 
-    def _build_spectrum_tab(self):
-        tab = self.spec_tab
+    def _build_spectrum_pane(self, parent):
+        pane = ttk.LabelFrame(parent, text="  Simulated spectrum (estimate)  ", style="Card.TLabelframe",
+                              padding=(10, 4, 10, 6))
+        pane.pack(fill="both", expand=True)
+        self.spec_pane = pane
         if not HAVE_PLOT:
-            ttk.Label(tab, justify="left", padding=20,
-                      text="The simulated-spectrum tab needs numpy and matplotlib:\n\n"
+            ttk.Label(pane, style="Card.TLabel", justify="left",
+                      text="The simulated spectrum needs numpy and matplotlib:\n\n"
                            "    pip install numpy matplotlib\n\n"
-                           "then restart the app. The thickness calculator works without them.").pack(anchor="nw")
+                           "then restart the app. The thickness calculator works without them.").pack(anchor="nw", pady=10)
             return
 
         self.sim_d_var = tk.StringVar()
         self.sim_shift_var = tk.StringVar(value="0")
         self.sim_fwhm_m_var = tk.StringVar()
         self.sim_fwhm_c_var = tk.StringVar()
-        self.sim_status = tk.StringVar(value="Run a calculation on the Calculator tab to see an estimated spectrum here.")
+        self.sim_status = tk.StringVar(value="Run a calculation to see an estimated spectrum here.")
         self._sim_busy = False
 
-        tk.Label(tab, text=sim.DISCLAIMER, fg="#b00020", font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=8, pady=(6, 0))
-
-        ctl = ttk.Frame(tab)
-        ctl.pack(fill="x", padx=8, pady=(4, 0))
-        ttk.Label(ctl, text="Thickness (nm):").pack(side="left")
-        d_entry = ttk.Entry(ctl, textvariable=self.sim_d_var, width=8)
+        ctl = ttk.Frame(pane, style="Card.TFrame")
+        ctl.pack(fill="x")
+        ttk.Label(ctl, text="Thickness (nm):", style="Card.TLabel").pack(side="left")
+        d_entry = ttk.Entry(ctl, textvariable=self.sim_d_var, width=7)
         d_entry.pack(side="left", padx=(4, 6))
-        self.sim_scale = ttk.Scale(ctl, from_=0.0, to=10.0, length=240, command=self._on_slider)
-        self.sim_scale.pack(side="left")
-        ttk.Button(ctl, text="Reset to calculated", command=lambda: self._refresh_spectrum(reset=True)).pack(side="left", padx=8)
+        self.sim_scale = ttk.Scale(ctl, from_=0.0, to=10.0, length=130, command=self._on_slider)
+        self.sim_scale.pack(side="left", padx=(0, 6))
+        reset_btn = ttk.Button(ctl, text="Reset", command=lambda: self._refresh_spectrum(reset=True))
+        reset_btn.pack(side="left", padx=(0, 14))
 
-        ctl2 = ttk.Frame(tab)
-        ctl2.pack(fill="x", padx=8, pady=(4, 0))
         entries = [d_entry]
-        for text, var in (("BE shift (eV):", self.sim_shift_var), ("FWHM metal (eV):", self.sim_fwhm_m_var),
-                          ("FWHM oxide (eV):", self.sim_fwhm_c_var)):
-            ttk.Label(ctl2, text=text).pack(side="left", padx=(0, 2))
-            e = ttk.Entry(ctl2, textvariable=var, width=7)
-            e.pack(side="left", padx=(0, 10))
-            entries.append(e)
-        ttk.Button(ctl2, text="Load my spectrum...", command=self._load_user_spectrum).pack(side="left")
-        ttk.Button(ctl2, text="Clear data", command=self._clear_user_spectrum).pack(side="left", padx=6)
+        ttk.Label(ctl, text="BE shift (eV):", style="Card.TLabel").pack(side="left", padx=(0, 2))
+        shift_entry = ttk.Entry(ctl, textvariable=self.sim_shift_var, width=5)
+        shift_entry.pack(side="left", padx=(0, 12))
+        ttk.Label(ctl, text="FWHM (eV):  metal", style="Card.TLabel").pack(side="left", padx=(0, 2))
+        fm_entry = ttk.Entry(ctl, textvariable=self.sim_fwhm_m_var, width=5)
+        fm_entry.pack(side="left", padx=(0, 6))
+        ttk.Label(ctl, text="oxide", style="Card.TLabel").pack(side="left", padx=(0, 2))
+        fc_entry = ttk.Entry(ctl, textvariable=self.sim_fwhm_c_var, width=5)
+        fc_entry.pack(side="left", padx=(0, 14))
+        entries += [shift_entry, fm_entry, fc_entry]
+        load_btn = ttk.Button(ctl, text="Load my spectrum...", command=self._load_user_spectrum)
+        load_btn.pack(side="left")
+        clear_btn = ttk.Button(ctl, text="Clear data", command=self._clear_user_spectrum)
+        clear_btn.pack(side="left", padx=6)
         for widget in entries:
             widget.bind("<Return>", lambda e: self._draw_spectrum())
             widget.bind("<FocusOut>", lambda e: self._draw_spectrum())
+        Tooltip(d_entry, "What-if thickness: type a value or drag the slider")
+        Tooltip(self.sim_scale, "Drag to see the spectrum for other thicknesses (what-if)")
+        Tooltip(reset_btn, "Set the what-if thickness back to the calculated value")
+        Tooltip(shift_entry, "Shift the simulated peaks, e.g. to match your charge correction")
+        Tooltip(fm_entry, "Width (FWHM) of each metal peak - match your instrument resolution")
+        Tooltip(fc_entry, "Width (FWHM) of each oxide/compound peak")
+        Tooltip(load_btn, "Overlay your own measured spectrum (2-column text/CSV: binding energy, intensity)")
+        Tooltip(clear_btn, "Remove the overlaid spectrum")
 
-        ttk.Label(tab, textvariable=self.sim_status, wraplength=1100, justify="left").pack(anchor="w", padx=8, pady=(4, 0))
+        info = ttk.Frame(pane, style="Card.TFrame")
+        info.pack(fill="x", pady=(3, 0))
+        self.fig = Figure(figsize=(9.5, 4.4), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=pane)
+        # Toolbar first (pinned right), then the status text takes the remaining width. The label asks for a tiny
+        # width so its unwrapped text can never squeeze the toolbar; wraplength follows the width it is given.
+        toolbar = NavigationToolbar2Tk(self.canvas, info, pack_toolbar=False)
+        toolbar.set_message = lambda s: None          # a coordinate read-out means nothing on a relative-intensity plot
+        for child in [toolbar] + list(toolbar.winfo_children()):
+            try:
+                child.configure(bg=CARD)
+            except tk.TclError:
+                pass
+        toolbar.configure(width=250)                  # matplotlib sizes the toolbar frame to the whole figure width
+        toolbar.pack(side="right")
+        status = ttk.Label(info, textvariable=self.sim_status, style="CardMuted.TLabel", justify="left", width=10)
+        status.pack(side="left", fill="x", expand=True)
+        status.bind("<Configure>", lambda e: status.configure(wraplength=max(200, e.width - 8)))
+        widget = self.canvas.get_tk_widget()
+        widget.pack(fill="both", expand=True, pady=(2, 0))
+        self._resize_job = None
+        self._last_canvas_size = (0, 0)
+        # add="+" keeps matplotlib's own <Configure> handler (it resizes the figure); a plain bind would replace it.
+        widget.bind("<Configure>", self._on_canvas_resize, add="+")
+        self._draw_placeholder("Run a calculation to see the estimated spectrum.")
 
-        self.fig = Figure(figsize=(9.5, 5.2), dpi=100)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=tab)
-        toolbar = NavigationToolbar2Tk(self.canvas, tab, pack_toolbar=False)
-        toolbar.pack(side="bottom", fill="x")
-        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=4, pady=4)
-        self._draw_placeholder("Run a calculation on the Calculator tab.")
+    def _on_canvas_resize(self, event):
+        """Redraw (debounced) when the pane is resized so the pixel-based margins stay right."""
+        size = (event.width, event.height)
+        if size == self._last_canvas_size or self.last_calc is None:
+            self._last_canvas_size = size
+            return
+        self._last_canvas_size = size
+        if self._resize_job is not None:
+            self.after_cancel(self._resize_job)
+        self._resize_job = self.after(150, self._draw_spectrum)
 
     def _draw_placeholder(self, message):
         self.fig.clear()
@@ -989,20 +1261,36 @@ class App(tk.Tk):
             res["N_ov_avg"], res["lam_ov_avg"], res["rsf_ov_avg"], areas)
         comps = [sim.SimComponent(lc["sub"]["label"], lc["sub"]["be"], sub_frac, "metal")]
         comps += [sim.SimComponent(c["label"], c["be"], f, "compound") for c, f in zip(lc["comps"], ov_fracs)]
-        simulation = sim.simulate(model, comps, fwhm_metal=fwhm_m, fwhm_compound=fwhm_c, be_shift=shift)
+
+        # What the simulation leaves out is stated on the figure; satellite regions are shaded and kept in the window.
+        note, regions = sim.ignored_features(model, comps, shift)
+        lo, hi = sim.default_window(model, comps, fwhm_m, fwhm_c, shift)
+        for region in regions:
+            lo, hi = min(lo, region.be_lo - 1.0), max(hi, region.be_hi + 1.0)
+        simulation = sim.simulate(model, comps, fwhm_metal=fwhm_m, fwhm_compound=fwhm_c, be_shift=shift,
+                                  window=(lo, hi))
 
         what_if = abs(d_nm - res["d_nm"]) > 5e-4
         status = ((f"WHAT-IF thickness {d_nm:.3f} nm (calculated: {res['d_nm']:.3f} nm). " if what_if
                    else f"Calculated thickness {d_nm:.3f} nm. ")
-                  + "Areas: " + ", ".join(f"{c.label} {100 * c.fraction:.0f}%" for c in comps)
-                  + f". Take-off angle {lc['theta']:g} deg. Peak shapes are typical defaults, not fitted to any data.")
+                  + ("" if self.compact else  # the legend already lists the areas; keep the line short on laptops
+                     "Areas: " + ", ".join(f"{c.label} {100 * c.fraction:.0f}%" for c in comps) + ". ")
+                  + f"Take-off angle {lc['theta']:g} deg. "
+                  + ("Cu(II) satellites are ignored for simplicity (see the note under the plot)." if regions
+                     else "Satellites/loss features are not drawn (see the note under the plot)."))
 
         fig = self.fig
         fig.clear()
-        gs = fig.add_gridspec(1, 2, width_ratios=[4.2, 1.0], wspace=0.30, left=0.07, right=0.97, top=0.86, bottom=0.13)
+        w_px, h_px = [max(float(v), 120.0) for v in (fig.get_size_inches() * fig.dpi)]   # only guards divide-by-zero
+        footer = textwrap.fill("Note: " + note, int((w_px - 24) / 5.3))
+        n_footer = footer.count("\n") + 1
+        bottom_px = (44 + 11.5 * n_footer) if h_px < 330 else (56 + 12.5 * n_footer)   # tick labels + x label + note
+        top_px = 28 if h_px < 330 else 30                                              # the ESTIMATE title
+        gs = fig.add_gridspec(1, 2, width_ratios=[4.4, 1.0], wspace=0.30, left=58 / w_px, right=1 - 14 / w_px,
+                              top=1 - top_px / h_px, bottom=bottom_px / h_px)
         ax = fig.add_subplot(gs[0])
         axd = fig.add_subplot(gs[1])
-        fig.suptitle(sim.DISCLAIMER, color="#b00020", fontsize=12, fontweight="bold", y=0.975)
+        fig.suptitle(sim.DISCLAIMER, color="#b00020", fontsize=11, fontweight="bold", y=1 - 5 / h_px, va="top")
 
         x, bg = simulation.be, simulation.background
         for i, (label, kind, frac, y) in enumerate(simulation.components):
@@ -1011,15 +1299,18 @@ class App(tk.Tk):
             ax.plot(x, bg + y, color=col, lw=1.0, label=f"{label} ({100 * frac:.0f}%)")
         ax.plot(x, bg, "--", color="0.45", lw=1.0, label="Shirley-type background")
         ax.plot(x, simulation.total, color="k", lw=1.6, label="Simulated total")
+        for region in regions:
+            ax.axvspan(region.be_lo, region.be_hi, facecolor="none", edgecolor="#9a9a9a", hatch="///",
+                       linewidth=0.0, alpha=0.55, label=region.label)
 
         if self.sim_data is not None:
             dx, dy, name = self.sim_data
             m = (dx >= x.min()) & (dx <= x.max())
             if m.sum() >= 3:
-                lo, hi = float(dy[m].min()), float(dy[m].max())
-                if hi > lo:
+                lo_y, hi_y = float(dy[m].min()), float(dy[m].max())
+                if hi_y > lo_y:
                     span = simulation.total.max() - simulation.total.min()
-                    scaled = (dy[m] - lo) / (hi - lo) * span + simulation.total.min()
+                    scaled = (dy[m] - lo_y) / (hi_y - lo_y) * span + simulation.total.min()
                     ax.plot(dx[m], scaled, ".", ms=3.5, color="#555555", label=f"{name} (scaled to simulation)")
             else:
                 status += f" Loaded data '{name}' does not overlap this BE window."
@@ -1029,10 +1320,11 @@ class App(tk.Tk):
         ax.set_xlabel("Binding energy (eV)")
         ax.set_ylabel("Relative intensity (a.u.)")
         ax.set_yticks([])
-        ax.set_title(f"{model.shell} region, peak areas normalised to 100%", fontsize=10)
         ax.text(0.5, 0.5, "ESTIMATE", transform=ax.transAxes, fontsize=64, color="red", alpha=0.07,
                 ha="center", va="center", rotation=25, fontweight="bold")
-        ax.legend(loc="upper left", fontsize=8, frameon=False)
+        ax.legend(loc="upper left", fontsize=8 if h_px >= 330 else 7, frameon=False, ncol=1 if h_px >= 330 else 2,
+                  title=f"{model.shell} region (areas normalised to 100%)", title_fontsize=8, alignment="left")
+        fig.text(10 / w_px, 5 / h_px, footer, fontsize=7.5, style="italic", color="#444444", ha="left", va="bottom")
 
         # --- to-scale layer diagram -------------------------------------------------
         sub_h = 3.0 * lc["sub"]["lam"]
@@ -1042,21 +1334,29 @@ class App(tk.Tk):
         axd.set_xlim(0, 1)
         axd.set_ylim(-sub_h, d_nm + top)
         axd.set_xticks([])
-        axd.set_ylabel("height above interface (nm)")
-        axd.text(0.5, -sub_h / 2, f"{lc['sub']['label']}\n(shown to 3\u03bb = {sub_h:.1f} nm)",
+        axd.set_ylabel("height (nm)")
+        axd.text(0.5, -sub_h / 2, f"{lc['sub']['label']}\n(shown to 3λ = {sub_h:.1f} nm)",
                  ha="center", va="center", fontsize=8)
         names = "\n".join(c["label"] for c in lc["comps"])      # one per line: the diagram axes are narrow
         axd.text(0.5, d_nm + top / 2, f"{names}\nd = {d_nm:.2f} nm" + (" (what-if)" if what_if else ""),
                  ha="center", va="center", fontsize=7.5, fontweight="bold")
-        axd.set_title("Layer (to scale)", fontsize=10)
+        axd.set_title("Layer (to scale)", fontsize=9)
         for side in ("top", "right"):
             axd.spines[side].set_visible(False)
         self.canvas.draw_idle()
 
     # ------------------------------------------------------------------
     def _build_help_tab(self):
-        text = tk.Text(self.help_tab, wrap="word", font=("Segoe UI", 10), padx=10, pady=10)
-        text.pack(fill="both", expand=True)
+        frame = ttk.Frame(self.help_tab)
+        frame.pack(fill="both", expand=True, padx=6, pady=6)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        text = tk.Text(frame, wrap="word", font=("Segoe UI", 10), padx=14, pady=12, relief="flat", bg=CARD,
+                       highlightthickness=1, highlightbackground="#d1d5db")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        text.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
         text.insert("1.0", HELP_TEXT)
         text.configure(state="disabled")
 
@@ -1168,21 +1468,27 @@ ALL EDITABLE. In particular:
   - Binding energy fields are for peak identification/reference only and
     do not enter the thickness calculation directly.
 
-Simulated spectrum tab (estimate)
-----------------------------------
-After a calculation, the "Simulated spectrum" tab draws what that thickness
-would look like for the substrate and oxide core-level peaks (spin-orbit
-doublets, Shirley-type background) next to a to-scale layer diagram, so you
-can compare it by eye with your own data. Use "Load my spectrum..." (2-column
-text/CSV: binding energy, intensity) to overlay it; it is scaled to the height
-of the simulation. Use the thickness box/slider for what-if values, the BE
-shift for charge correction, and the FWHM boxes to match your resolution.
+Simulated spectrum pane (estimate)
+-----------------------------------
+Below the inputs, the "Simulated spectrum" pane draws what the calculated
+thickness would look like for the substrate and oxide core-level peaks
+(spin-orbit doublets, Shirley-type background) next to a to-scale layer
+diagram, so you can compare it by eye with your own data. Use "Load my
+spectrum..." (2-column text/CSV: binding energy, intensity) to overlay it; it
+is scaled to the height of the simulation. Use the thickness box/slider for
+what-if values, the BE shift for charge correction, and the FWHM boxes to
+match your resolution. Drag the divider above the pane to trade height
+between the inputs and the plot.
 
 It is an ESTIMATE, not a fit: splitting, branching ratio and FWHM are typical
-literature defaults; shake-up satellites (CuO, Cu(OH)2), asymmetric metal tails,
-plasmon/loss features and Auger lines are not modelled; intensities are
-relative (areas normalised to 100%). It needs numpy and matplotlib
-(pip install numpy matplotlib); the calculator itself does not.
+literature defaults, and intensities are relative (areas normalised to 100%).
+For simplicity the simulation does NOT draw shake-up/shake-off satellites
+(e.g. the Cu(II) satellites of CuO and Cu(OH)2 in Cu 2p3/2, which carry roughly
+35-39% of the Cu(II) area), plasmon/loss features, Auger lines or asymmetric
+metal tails. A note under the plot says so, and for Cu(II) the missing satellite
+region is shaded. Auger presets (Cu LMM, Zn LMM) are not simulated. The pane
+needs numpy and matplotlib (pip install numpy matplotlib); the calculator
+itself does not.
 
 Validity / limitations
 ------------------------
