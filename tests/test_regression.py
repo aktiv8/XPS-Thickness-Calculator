@@ -171,6 +171,7 @@ class AvantageDensitiesSiTi(unittest.TestCase):
         for kind, key, rho, eg, nv, m, ke in self.CASES:
             c = (A.SUBSTRATES if kind == "sub" else A.OVERLAYERS)[key]
             self.assertEqual(c.density_g_cm3, rho, key)
+            self.assertEqual(c.band_gap_ev, eg, key)
             self.assertAlmostEqual(c.molar_mass_g_mol, m, places=3, msg=key)
             self.assertAlmostEqual(c.imfp_nm, A.tpp2m_imfp_nm(ke, rho, m, nv, eg), delta=0.005, msg=key)
 
@@ -182,6 +183,33 @@ class AvantageDensitiesSiTi(unittest.TestCase):
         self.assertAlmostEqual(ratio("Si (metal/elemental)", "SiO2"), 2.27, delta=0.01)
         self.assertAlmostEqual(ratio("Si (metal/elemental)", "Si3N4"), 1.13, delta=0.01)
         self.assertAlmostEqual(ratio("Ti (metal)", "TiO2"), 1.78, delta=0.01)
+
+
+class BandGapTable(unittest.TestCase):
+    def test_existing_avantage_values_are_not_overwritten_by_the_user_list(self):
+        # The user's pasted list also had Si 1.11, Ge 0.66, GaAs 1.43 and SiO2 9.0; the Avantage values must win.
+        for name, eg in (("Si", 1.12), ("Ge", 0.67), ("GaAs", 1.35), ("SiO2", 8.9), ("ZnO", 3.2), ("ZnS", 3.6),
+                         ("Diamond", 5.5)):
+            self.assertEqual(A.BAND_GAPS_EV[name], (eg, A.AVANTAGE), name)
+
+    def test_new_user_list_entries(self):
+        for name, eg in (("InP", 1.27), ("GaP", 2.25), ("CdTe", 1.44), ("PbS", 0.37)):
+            self.assertEqual(A.BAND_GAPS_EV[name], (eg, A.USER_LIST), name)
+
+    def test_cu_oxide_gaps_come_from_biesinger(self):
+        for name, eg in (("Cu2O", 2.1), ("CuO", 1.25), ("Cu(OH)2", 1.85)):
+            self.assertEqual(A.BAND_GAPS_EV[name], (eg, A.BIESINGER), name)
+
+    def test_every_preset_with_a_band_gap_matches_the_table_or_is_a_metal(self):
+        for presets in (A.SUBSTRATES, A.OVERLAYERS):
+            for key, c in presets.items():
+                if c is None or c.band_gap_ev is None:
+                    continue
+                if c.band_gap_ev == 0.0:
+                    continue   # metal
+                name = key.split(" (")[0]
+                name = "Si" if name.startswith("Si ") else name
+                self.assertEqual(c.band_gap_ev, A.BAND_GAPS_EV[name][0], key)
 
 
 class EquationProperties(unittest.TestCase):

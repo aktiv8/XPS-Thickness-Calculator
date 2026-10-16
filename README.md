@@ -62,6 +62,10 @@ Si, SiO₂, Si₃N₄, Ti and TiO₂ take density and band gap from the Thermo A
 (3.09/3.89/3.00/2.19/2.17 nm at Al Kα). Note the 3.44 g/cm³ Si₃N₄ density is high for
 thin amorphous films. SiON is still a rough placeholder.
 
+`BAND_GAPS_EV` in `app.py` is a reference table of band gaps (used only for TPP-2M IMFP
+estimates): the Avantage file's values, Biesinger's Cu oxide gaps, and four user-supplied
+additions (InP 1.27, GaP 2.25, CdTe 1.44, PbS 0.37 eV). Existing entries are never overwritten.
+
 ## Tests
 
 ```bash

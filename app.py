@@ -49,6 +49,7 @@ import math
 import time
 import tkinter as tk
 from dataclasses import dataclass, field
+from typing import Optional
 from tkinter import ttk, messagebox, filedialog
 
 
@@ -66,8 +67,24 @@ class Compound:
     be_ev: float                # typical binding energy of this component (eV)
     imfp_nm: float               # typical inelastic mean free path (nm)
     rsf: float = 1.0
+    band_gap_ev: Optional[float] = None   # eV; 0 = metal, None = unknown. Only TPP-2M uses it.
     note: str = ""
 
+
+# Band gaps (eV), name -> (value, source). Only the TPP-2M IMFP estimate uses these, not the thickness equation.
+# Existing entries are never overwritten by later lists: where a material appears in more than one source the
+# first source here wins (Avantage, then Biesinger), and the user-supplied list only adds materials not already present.
+AVANTAGE = "Thermo Avantage Densities.txt"
+BIESINGER = "Biesinger, Surf. Interface Anal. 2017, 49, 1325"
+USER_LIST = "user-supplied list (unsourced)"
+BAND_GAPS_EV = {
+    "SiO2": (8.9, AVANTAGE), "Sn (gray)": (0.08, AVANTAGE), "HfO2": (5.7, AVANTAGE), "ZrO2": (6.0, AVANTAGE),
+    "Si": (1.12, AVANTAGE), "TiO2": (3.05, AVANTAGE), "Si3N4": (4.65, AVANTAGE), "Al2O3": (8.7, AVANTAGE),
+    "GaAs": (1.35, AVANTAGE), "SiC": (2.86, AVANTAGE), "ZnO": (3.2, AVANTAGE), "ZnS": (3.6, AVANTAGE),
+    "Diamond": (5.5, AVANTAGE), "Graphite": (0.0, AVANTAGE), "Ge": (0.67, AVANTAGE),
+    "Cu2O": (2.1, BIESINGER), "CuO": (1.25, BIESINGER), "Cu(OH)2": (1.85, BIESINGER),
+    "InP": (1.27, USER_LIST), "GaP": (2.25, USER_LIST), "CdTe": (1.44, USER_LIST), "PbS": (0.37, USER_LIST),
+}
 
 # Substrate ("metal") reference compounds
 SUBSTRATES = {
@@ -207,6 +224,22 @@ OVERLAYERS = {
         note="Enter your own values.",
     ),
 }
+
+
+# Band gap per preset (eV): metals are 0, None = not known (the thickness equation itself doesn't use it).
+_PRESET_BAND_GAP = {
+    "Cu (metal, LMM)": 0.0, "Cu (metal, 2p3/2)": 0.0, "W (metal)": 0.0, "Al (metal)": 0.0, "Al (metal, Mg Ka)": 0.0,
+    "Ti (metal)": 0.0, "Si (metal/elemental)": BAND_GAPS_EV["Si"][0],
+    "CuO (LMM)": BAND_GAPS_EV["CuO"][0], "CuO (2p3/2)": BAND_GAPS_EV["CuO"][0],
+    "Cu2O (LMM)": BAND_GAPS_EV["Cu2O"][0], "Cu2O (2p3/2)": BAND_GAPS_EV["Cu2O"][0],
+    "Cu(OH)2 (LMM)": BAND_GAPS_EV["Cu(OH)2"][0], "Cu(OH)2 (2p3/2)": BAND_GAPS_EV["Cu(OH)2"][0],
+    "Al2O3": BAND_GAPS_EV["Al2O3"][0], "Al2O3 (Mg Ka)": BAND_GAPS_EV["Al2O3"][0],
+    "SiO2": BAND_GAPS_EV["SiO2"][0], "Si3N4": BAND_GAPS_EV["Si3N4"][0], "TiO2": BAND_GAPS_EV["TiO2"][0],
+}
+for _presets in (SUBSTRATES, OVERLAYERS):
+    for _key, _compound in _presets.items():
+        if _compound is not None and _key in _PRESET_BAND_GAP:
+            _compound.band_gap_ev = _PRESET_BAND_GAP[_key]
 
 
 def volume_density(density_g_cm3: float, molar_mass_g_mol: float, atoms_per_formula: float) -> float:
