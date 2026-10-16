@@ -78,8 +78,8 @@ SUBSTRATES = {
     ),
     "Al (metal)": Compound(
         "Al (metal)", density_g_cm3=2.70, molar_mass_g_mol=26.98,
-        atoms_per_formula=1, core_level="Al 2p", be_ev=72.9, imfp_nm=2.51,
-        note="Al Ka source, KE ~1414 eV. IMFP is a TPP-2M-type estimate - verify.",
+        atoms_per_formula=1, core_level="Al 2p", be_ev=72.9, imfp_nm=2.6,
+        note="Al Ka source, KE ~1414 eV. IMFP 2.6 nm = Strohmeier (1990) value, as used in Biesinger's Al calculator.",
     ),
     "Si (metal/elemental)": Compound(
         "Si (elemental)", density_g_cm3=2.33, molar_mass_g_mol=28.09,
@@ -112,9 +112,11 @@ OVERLAYERS = {
         note="Copper hydroxide.",
     ),
     "Al2O3": Compound(
-        "Al2O3", density_g_cm3=3.20, molar_mass_g_mol=101.96,
-        atoms_per_formula=2, core_level="Al 2p", be_ev=74.4, imfp_nm=2.90,
-        note="Amorphous native/anodic alumina density (~3.0-3.2); crystalline sapphire is 3.95 - edit if relevant.",
+        "Al2O3", density_g_cm3=3.40, molar_mass_g_mol=101.96,
+        atoms_per_formula=2, core_level="Al 2p", be_ev=74.4, imfp_nm=2.8,
+        note="Strohmeier (1990) values: IMFP 2.8 nm and Nm/Nox = 1.5 with the Al preset. The 3.40 g/cm3 density is "
+             "back-calculated to give that ratio (not a measured density; native/anodic films ~3.0-3.2, sapphire 3.95). "
+             "Reproduces Biesinger's Al calculator - edit if your film differs.",
     ),
     "SiO2": Compound(
         "SiO2", density_g_cm3=2.20, molar_mass_g_mol=60.08,
@@ -523,7 +525,13 @@ Some instruments/software quote the angle from the surface NORMAL instead
 
 On the pre-filled reference values
 -----------------------------------
-Densities, molar masses, typical binding energies and IMFP values supplied
+The Al / Al2O3 presets are the exception: they use Strohmeier's original
+values (IMFP 2.8 nm oxide / 2.6 nm metal, Nm/Nox = 1.5, as used in
+M. C. Biesinger's Al oxide/hydroxide thickness calculator) and reproduce
+that spreadsheet's worked examples to 0.1 A (see tests/test_regression.py).
+The 3.40 g/cm3 Al2O3 density is back-calculated to give Nm/Nox = 1.5.
+
+For the other systems, densities, molar masses, typical binding energies and IMFP values supplied
 as defaults are representative literature / TPP-2M-style estimates for
 common systems (Cu/CuO/Cu2O/Cu(OH)2, Al/Al2O3, Si/SiO2/Si3N4). They are
 ALL EDITABLE. In particular:

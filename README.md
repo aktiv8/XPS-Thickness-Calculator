@@ -40,6 +40,21 @@ derivation notes, and important caveats about the reference density/IMFP
 defaults (in particular: IMFP is source/instrument-dependent and film
 density can differ from bulk values — verify both for rigorous work).
 
+The **Al / Al₂O₃** presets use Strohmeier's original values (IMFP 2.8 nm oxide /
+2.6 nm metal, Nm/Nox = 1.5) and reproduce the worked examples in M. C.
+Biesinger's Al oxide/hydroxide thickness spreadsheet to 0.1 Å.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Stdlib only; no display needed. `tests/test_regression.py` checks the Biesinger
+Al examples (65/35 → 35.8 Å, 23/77 → 9.7 Å, 85/15 → 61.2 Å) plus a few
+properties of the equation.
+
 ## Files
 
 - `app.py` — the application (single file).
+- `tests/test_regression.py` — regression tests.

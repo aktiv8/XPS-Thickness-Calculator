@@ -11,16 +11,19 @@ Single-file Tkinter app (`app.py`, Python standard library only, no dependencies
 ```bash
 python app.py                                                  # launch the Tk GUI (blocks until closed)
 python -c "import py_compile; py_compile.compile('app.py', doraise=True)"   # syntax check without opening a window
+python -m unittest discover -s tests -v                        # run all tests (stdlib only, no display)
+python -m unittest tests.test_regression.BiesingerAlSpreadsheet   # a single test class
 ```
 
-There are no tests, linter or formatter. The calculation core is `strohmeier_thickness()` (a pure function, importable without starting the GUI thanks to the `__main__` guard), fed by `volume_density()`; everything else is Tkinter. To check a change to the maths, call those two directly rather than driving the GUI.
+There is no linter or formatter. The calculation core is `strohmeier_thickness()` (a pure function, importable without starting the GUI thanks to the `__main__` guard), fed by `volume_density()`; everything else is Tkinter. To check a change to the maths, call those two directly rather than driving the GUI. `tests/test_regression.py` pins the app to Biesinger's Al spreadsheet (see below) — if it fails after a preset edit, the preset drifted from Strohmeier's values.
 
 ## Things that aren't obvious from a skim
 
 - The single- and mixed-layer equations from the tech note are one code path: overlayer N, λ and RSF are intensity-weighted averages over the active components. With one component and RSF = 1 it reduces exactly to Strohmeier's equation. RSFs cancel for same-core-level metal/oxide pairs, so they default to 1.0.
 - N = atoms_per_formula × density / molar_mass (e.g. Cu₂O uses 2 atoms); only ratios matter, so units are arbitrary but must be consistent.
 - Take-off angle θ is measured from the **surface** (90° = normal emission), per the tech note. The validity limit reported is ≈ 3× the overlayer IMFP.
-- Preset densities, IMFPs and binding energies in `SUBSTRATES` / `OVERLAYERS` are representative defaults, not authoritative; the GUI makes them editable. Binding energies are informational only and don't enter the calculation. The Cu₂O and Cu(OH)₂ Nm/Nox ratios differ ~2% from the tech note because of different reference atomic weights and densities.
+- The Al / Al₂O₃ presets are the exception: they are Strohmeier's original values (IMFP 2.6 nm metal / 2.8 nm oxide, Nm/Nox = 1.5), as used in M. C. Biesinger's Al oxide/hydroxide spreadsheet, whose three worked rows the regression test reproduces to 0.1 Å. The 3.40 g/cm³ Al₂O₃ density is back-calculated to give Nm/Nox = 1.5, not a measured density. Strohmeier's 1990 paper itself is paywalled and wasn't read.
+- Other preset densities, IMFPs and binding energies in `SUBSTRATES` / `OVERLAYERS` are representative defaults, not authoritative; the GUI makes them editable. Binding energies are informational only and don't enter the calculation. The Cu₂O and Cu(OH)₂ Nm/Nox ratios differ ~2% from the tech note because of different reference atomic weights and densities.
 
 ## Git
 
