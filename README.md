@@ -40,9 +40,19 @@ derivation notes, and important caveats about the reference density/IMFP
 defaults (in particular: IMFP is source/instrument-dependent and film
 density can differ from bulk values — verify both for rigorous work).
 
-The **Al / Al₂O₃** presets use Strohmeier's original values (IMFP 2.8 nm oxide /
-2.6 nm metal, Nm/Nox = 1.5) and reproduce the worked examples in M. C.
-Biesinger's Al oxide/hydroxide thickness spreadsheet to 0.1 Å.
+Several presets come straight from the original papers, and the tests pin them
+to the published numbers:
+
+| System | Source | Inputs |
+|---|---|---|
+| Al / Al₂O₃ (Al Kα and Mg Kα) | Strohmeier, *Surf. Interface Anal.* 1990, **15**, 51 | IMFP 2.8 / 2.6 nm (Al Kα), 2.4 / 2.2 nm (Mg Kα), Nm/Nox = 1.5 |
+| Cu / Cu₂O / CuO / Cu(OH)₂ | Biesinger, *Surf. Interface Anal.* 2017, **49**, 1325 | 8.96 / 6.00 / 6.31 / 3.37 g/cm³; IMFP 1.54 / 1.77 / 1.76 / 2.19 nm |
+| W / WO₃ | Carlson & McGuire, *J. Electron Spectrosc.* 1972/73, **1**, 161 | 19.3 / 6.8 g/cm³; IMFP 1.28 / 2.63 nm; 45° take-off |
+
+The Al preset also reproduces M. C. Biesinger's Al oxide/hydroxide spreadsheet to
+0.1 Å. The Cu IMFPs are for Cu LMM Auger electrons (KE ≈ 918 eV), as in the
+paper; if your areas come from Cu 2p3/2 use smaller 2p3/2 IMFPs. Si presets are
+still approximate defaults.
 
 ## Tests
 
@@ -50,9 +60,9 @@ Biesinger's Al oxide/hydroxide thickness spreadsheet to 0.1 Å.
 python -m unittest discover -s tests -v
 ```
 
-Stdlib only; no display needed. `tests/test_regression.py` checks the Biesinger
-Al examples (65/35 → 35.8 Å, 23/77 → 9.7 Å, 85/15 → 61.2 Å) plus a few
-properties of the equation.
+Stdlib only; no display needed. `tests/test_regression.py` checks published numbers from
+the three papers above and Biesinger's Al spreadsheet (65/35 → 35.8 Å,
+23/77 → 9.7 Å, 85/15 → 61.2 Å), plus a few properties of the equation.
 
 ## Files
 

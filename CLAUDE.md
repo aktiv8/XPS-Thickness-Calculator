@@ -15,15 +15,19 @@ python -m unittest discover -s tests -v                        # run all tests (
 python -m unittest tests.test_regression.BiesingerAlSpreadsheet   # a single test class
 ```
 
-There is no linter or formatter. The calculation core is `strohmeier_thickness()` (a pure function, importable without starting the GUI thanks to the `__main__` guard), fed by `volume_density()`; everything else is Tkinter. To check a change to the maths, call those two directly rather than driving the GUI. `tests/test_regression.py` pins the app to Biesinger's Al spreadsheet (see below) — if it fails after a preset edit, the preset drifted from Strohmeier's values.
+There is no linter or formatter. The calculation core is `strohmeier_thickness()` (a pure function, importable without starting the GUI thanks to the `__main__` guard), fed by `volume_density()`; everything else is Tkinter. To check a change to the maths, call those two directly rather than driving the GUI. `tests/test_regression.py` pins the app to published numbers (see below) — if it fails after a preset edit, the preset drifted from its source paper.
 
 ## Things that aren't obvious from a skim
 
 - The single- and mixed-layer equations from the tech note are one code path: overlayer N, λ and RSF are intensity-weighted averages over the active components. With one component and RSF = 1 it reduces exactly to Strohmeier's equation. RSFs cancel for same-core-level metal/oxide pairs, so they default to 1.0.
 - N = atoms_per_formula × density / molar_mass (e.g. Cu₂O uses 2 atoms); only ratios matter, so units are arbitrary but must be consistent.
 - Take-off angle θ is measured from the **surface** (90° = normal emission), per the tech note. The validity limit reported is ≈ 3× the overlayer IMFP.
-- The Al / Al₂O₃ presets are the exception: they are Strohmeier's original values (IMFP 2.6 nm metal / 2.8 nm oxide, Nm/Nox = 1.5), as used in M. C. Biesinger's Al oxide/hydroxide spreadsheet, whose three worked rows the regression test reproduces to 0.1 Å. The 3.40 g/cm³ Al₂O₃ density is back-calculated to give Nm/Nox = 1.5, not a measured density. Strohmeier's 1990 paper itself is paywalled and wasn't read.
-- Other preset densities, IMFPs and binding energies in `SUBSTRATES` / `OVERLAYERS` are representative defaults, not authoritative; the GUI makes them editable. Binding energies are informational only and don't enter the calculation. The Cu₂O and Cu(OH)₂ Nm/Nox ratios differ ~2% from the tech note because of different reference atomic weights and densities.
+- Several presets are taken from the original papers, and `tests/test_regression.py` pins them to published numbers (a failing test after a preset edit means the preset drifted from the paper):
+  - **Al / Al₂O₃**: Strohmeier 1990 — IMFP 2.8/2.6 nm (Al Kα) and 2.4/2.2 nm (Mg Kα), θ from the **surface**, Nm/Nox = 1.5. The paper rounds the log coefficient to 1.4 (`d = 28 ln(1.4 Io/Im + 1)`); the app uses the exact value (≈1.393), so expect ≤0.4 Å differences. The 3.40 g/cm³ Al₂O₃ density is back-calculated to give Nm/Nox = 1.5 (the paper quotes ~1.3–1.5), not a measured density. Biesinger's Al spreadsheet uses the same inputs and is also reproduced to 0.1 Å.
+  - **Cu oxides/hydroxide**: Biesinger 2017 — densities 8.96/6.00/6.31/3.37 g/cm³, IMFPs 1.54/1.77/1.76/2.19 nm. These IMFPs are for **Cu LMM Auger electrons (KE ≈ 918 eV)**, not Cu 2p3/2 (KE ≈ 554 eV); his ~3.2 nm worked example (63% Cu₂O, 13% Cu(OH)₂, 25% metal) is reproduced only with intensity-weighted N and λ, which is what the app does (averaging the Nm/N ratios instead gives 3.4 nm). The HarwellXPS tech note's Cu numbers (8.93 g/cm³, CuO 6.39) differ by ~1–2%.
+  - **W / WO₃**: Carlson & McGuire 1972/73 — 19.3 and 6.8 g/cm³ (WO₃ at 6.8, not the bulk 7.16), IMFP 1.28/2.63 nm, 45° take-off. Their eq. (5) is the same equation as Strohmeier's; the test round-trips it.
+  - Strohmeier and Carlson & McGuire were read in full; of Biesinger 2017 only the thickness section and Table 6 were checked. The tech note's own 4.4 nm Al example comes from the tech note's spectrum, not from Strohmeier's paper, so it cannot be reproduced.
+- The remaining presets (Si, SiO₂, Si₃N₄, SiON) are representative defaults, not authoritative; the GUI makes them editable. Binding energies are informational only and don't enter the calculation.
 
 ## Git
 

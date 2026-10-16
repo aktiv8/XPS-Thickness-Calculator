@@ -72,14 +72,28 @@ class Compound:
 # Substrate ("metal") reference compounds
 SUBSTRATES = {
     "Cu (metal)": Compound(
-        "Cu (metal)", density_g_cm3=8.93, molar_mass_g_mol=63.55,
-        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=932.6, imfp_nm=1.55,
-        note="Al Ka source, KE ~554 eV. IMFP is a TPP-2M-type estimate - verify.",
+        "Cu (metal)", density_g_cm3=8.96, molar_mass_g_mol=63.546,
+        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=932.63, imfp_nm=1.54,
+        note="Biesinger, Surf. Interface Anal. 2017, 49, 1325. IMFP 1.54 nm (NIST SRD 71, TPP-2M) is for Cu LMM Auger "
+             "electrons, KE ~918 eV (Cu L3M4,5M4,5 KE 918.61 eV). If your areas come from Cu 2p3/2 (KE ~554 eV with "
+             "Al Ka) the IMFPs are smaller - replace all Cu/oxide IMFPs consistently.",
+    ),
+    "W (metal)": Compound(
+        "W (metal)", density_g_cm3=19.3, molar_mass_g_mol=183.84,
+        atoms_per_formula=1, core_level="W 4f7/2", be_ev=31.4, imfp_nm=1.28,
+        note="Carlson & McGuire, J. Electron Spectrosc. 1972/73, 1, 161: IMFP 12.8 A at KE ~1455 eV (Al Ka). Their "
+             "geometry was 45 deg take-off. BE is a typical literature value, not from the paper.",
     ),
     "Al (metal)": Compound(
         "Al (metal)", density_g_cm3=2.70, molar_mass_g_mol=26.98,
         atoms_per_formula=1, core_level="Al 2p", be_ev=72.9, imfp_nm=2.6,
-        note="Al Ka source, KE ~1414 eV. IMFP 2.6 nm = Strohmeier (1990) value, as used in Biesinger's Al calculator.",
+        note="Al Ka source, KE ~1413 eV. IMFP 2.6 nm = Strohmeier, Surf. Interface Anal. 1990, 15, 51 (from Tanuma, "
+             "Powell & Penn 1988); also used in Biesinger's Al calculator.",
+    ),
+    "Al (metal, Mg Ka)": Compound(
+        "Al (metal, Mg Ka)", density_g_cm3=2.70, molar_mass_g_mol=26.98,
+        atoms_per_formula=1, core_level="Al 2p", be_ev=72.9, imfp_nm=2.2,
+        note="Mg Ka source, KE ~1180 eV. IMFP 2.2 nm = Strohmeier (1990). Pair with the 'Al2O3 (Mg Ka)' overlayer.",
     ),
     "Si (metal/elemental)": Compound(
         "Si (elemental)", density_g_cm3=2.33, molar_mass_g_mol=28.09,
@@ -97,26 +111,38 @@ SUBSTRATES = {
 OVERLAYERS = {
     "None": None,
     "CuO": Compound(
-        "CuO", density_g_cm3=6.40, molar_mass_g_mol=79.55,
-        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=933.6, imfp_nm=1.90,
-        note="Cupric oxide.",
+        "CuO", density_g_cm3=6.31, molar_mass_g_mol=79.55,
+        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=933.76, imfp_nm=1.76,
+        note="Biesinger 2017: 6.31 g/cm3, IMFP 1.76 nm at Cu LMM KE ~918 eV (Cu LMM KE 917.57 eV); Nm/Nox = 1.78.",
     ),
     "Cu2O": Compound(
         "Cu2O", density_g_cm3=6.00, molar_mass_g_mol=143.09,
-        atoms_per_formula=2, core_level="Cu 2p3/2", be_ev=932.4, imfp_nm=1.90,
-        note="Cuprous oxide - 2 Cu atoms per formula unit. Overlaps Cu0 BE; use Cu LMM Auger/Auger parameter to distinguish in practice.",
+        atoms_per_formula=2, core_level="Cu 2p3/2", be_ev=932.18, imfp_nm=1.77,
+        note="Biesinger 2017: 6.00 g/cm3, IMFP 1.77 nm at Cu LMM KE ~918 eV (Cu LMM KE 916.99 eV); Nm/Nox = 1.68 "
+             "(2 Cu atoms per formula unit). Cu 2p3/2 BE overlaps Cu0, so use the Cu LMM Auger line to separate them.",
     ),
     "Cu(OH)2": Compound(
         "Cu(OH)2", density_g_cm3=3.37, molar_mass_g_mol=97.56,
-        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=934.6, imfp_nm=2.00,
-        note="Copper hydroxide.",
+        atoms_per_formula=1, core_level="Cu 2p3/2", be_ev=934.67, imfp_nm=2.19,
+        note="Biesinger 2017: 3.37 g/cm3, IMFP 2.19 nm at Cu LMM KE ~918 eV (Cu LMM KE 916.25 eV); Nm/Nox = 4.08.",
+    ),
+    "WO3": Compound(
+        "WO3", density_g_cm3=6.8, molar_mass_g_mol=231.84,
+        atoms_per_formula=1, core_level="W 4f7/2", be_ev=35.8, imfp_nm=2.63,
+        note="Carlson & McGuire 1972/73: anodic WO3 taken as 6.8 g/cm3 (bulk 7.16), IMFP 26.3 A, Nm/Nox = 3.58 with the "
+             "W preset; use theta = 45 deg to match their geometry. BE is a typical literature value, not from the paper.",
     ),
     "Al2O3": Compound(
         "Al2O3", density_g_cm3=3.40, molar_mass_g_mol=101.96,
         atoms_per_formula=2, core_level="Al 2p", be_ev=74.4, imfp_nm=2.8,
-        note="Strohmeier (1990) values: IMFP 2.8 nm and Nm/Nox = 1.5 with the Al preset. The 3.40 g/cm3 density is "
-             "back-calculated to give that ratio (not a measured density; native/anodic films ~3.0-3.2, sapphire 3.95). "
-             "Reproduces Biesinger's Al calculator - edit if your film differs.",
+        note="Strohmeier (1990): IMFP 2.8 nm (Al Ka) and Nm/Nox = 1.5 (he quotes ~1.3-1.5 from gamma-Al2O3 densities and "
+             "uses 1.5). The 3.40 g/cm3 density is back-calculated to give that ratio, not a measured density "
+             "(native/anodic films ~3.0-3.2, sapphire 3.95). Reproduces Biesinger's Al calculator - edit if your film differs.",
+    ),
+    "Al2O3 (Mg Ka)": Compound(
+        "Al2O3 (Mg Ka)", density_g_cm3=3.40, molar_mass_g_mol=101.96,
+        atoms_per_formula=2, core_level="Al 2p", be_ev=74.4, imfp_nm=2.4,
+        note="Mg Ka source (KE ~1180 eV): IMFP 2.4 nm (Strohmeier 1990), Nm/Nox = 1.5. Pair with 'Al (metal, Mg Ka)'.",
     ),
     "SiO2": Compound(
         "SiO2", density_g_cm3=2.20, molar_mass_g_mol=60.08,
@@ -512,7 +538,7 @@ Volume density N
 N = (atoms of the substrate element per formula unit) * density / molar mass
 
 e.g. for Cu2O: N = (2 x 6.00) / 143.09. This matches the tech note's
-worked calculation for the Cu/CuO/Cu2O/Cu(OH)2 system exactly (only the
+worked calculation for the Cu/CuO/Cu2O/Cu(OH)2 system (only the
 ratio Nm/Nox enters the equation, so absolute units are not important as
 long as they are used consistently, which this tool does automatically).
 
@@ -525,15 +551,23 @@ Some instruments/software quote the angle from the surface NORMAL instead
 
 On the pre-filled reference values
 -----------------------------------
-The Al / Al2O3 presets are the exception: they use Strohmeier's original
-values (IMFP 2.8 nm oxide / 2.6 nm metal, Nm/Nox = 1.5, as used in
-M. C. Biesinger's Al oxide/hydroxide thickness calculator) and reproduce
-that spreadsheet's worked examples to 0.1 A (see tests/test_regression.py).
-The 3.40 g/cm3 Al2O3 density is back-calculated to give Nm/Nox = 1.5.
+Several presets come straight from the original papers and are pinned by
+tests/test_regression.py:
+  - Al / Al2O3 (Al Ka and Mg Ka): Strohmeier, Surf. Interface Anal. 1990,
+    15, 51. IMFP 2.8 nm oxide / 2.6 nm metal (Al Ka) and 2.4 / 2.2 nm
+    (Mg Ka), Nm/Nox = 1.5. Also used in M. C. Biesinger's Al oxide/hydroxide
+    spreadsheet. The 3.40 g/cm3 Al2O3 density is back-calculated to give
+    Nm/Nox = 1.5 (Strohmeier quotes ~1.3-1.5 from gamma-Al2O3 densities).
+  - Cu / Cu2O / CuO / Cu(OH)2: Biesinger, Surf. Interface Anal. 2017, 49,
+    1325 (densities 8.96, 6.00, 6.31, 3.37 g/cm3; IMFPs 1.54, 1.77, 1.76,
+    2.19 nm). These IMFPs are for Cu LMM Auger electrons (KE ~918 eV); if
+    your areas come from Cu 2p3/2 (KE ~554 eV) use smaller 2p3/2 IMFPs.
+  - W / WO3: Carlson & McGuire, J. Electron Spectrosc. 1972/73, 1, 161
+    (19.3 and 6.8 g/cm3, IMFP 1.28 and 2.63 nm, 45 deg take-off).
 
-For the other systems, densities, molar masses, typical binding energies and IMFP values supplied
-as defaults are representative literature / TPP-2M-style estimates for
-common systems (Cu/CuO/Cu2O/Cu(OH)2, Al/Al2O3, Si/SiO2/Si3N4). They are
+For the other systems (Si/SiO2/Si3N4/SiON), densities, molar masses, typical
+binding energies and IMFP values supplied as defaults are representative
+literature / TPP-2M-style estimates. All presets are
 ALL EDITABLE. In particular:
   - IMFP is the most sensitive/uncertain input and depends on the exact
     kinetic energy (i.e. your X-ray source) and the true film density.
